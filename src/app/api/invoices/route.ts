@@ -69,7 +69,27 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    return NextResponse.json(invoices)
+    // Serialize Decimal to Number for client components
+    const serializedInvoices = invoices.map(invoice => ({
+      ...invoice,
+      amount: Number(invoice.amount),
+      taxAmount: Number(invoice.taxAmount),
+      totalAmount: Number(invoice.totalAmount),
+      booking: {
+        ...invoice.booking,
+        totalPrice: Number(invoice.booking.totalPrice),
+        bookingVehicles: invoice.booking.bookingVehicles.map(vehicle => ({
+          ...vehicle,
+          bookingServices: vehicle.bookingServices.map(service => ({
+            ...service,
+            unitPrice: Number(service.unitPrice),
+            totalPrice: Number(service.totalPrice),
+          })),
+        })),
+      },
+    }))
+
+    return NextResponse.json(serializedInvoices)
   } catch (error) {
     console.error('Error fetching invoices:', error)
     return NextResponse.json(
@@ -201,7 +221,27 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    return NextResponse.json(invoice, { status: 201 })
+    // Serialize Decimal to Number for client components
+    const serializedInvoice = {
+      ...invoice,
+      amount: Number(invoice.amount),
+      taxAmount: Number(invoice.taxAmount),
+      totalAmount: Number(invoice.totalAmount),
+      booking: {
+        ...invoice.booking,
+        totalPrice: Number(invoice.booking.totalPrice),
+        bookingVehicles: invoice.booking.bookingVehicles.map(vehicle => ({
+          ...vehicle,
+          bookingServices: vehicle.bookingServices.map(service => ({
+            ...service,
+            unitPrice: Number(service.unitPrice),
+            totalPrice: Number(service.totalPrice),
+          })),
+        })),
+      },
+    }
+
+    return NextResponse.json(serializedInvoice, { status: 201 })
   } catch (error) {
     console.error('Error creating invoice:', error)
     return NextResponse.json(

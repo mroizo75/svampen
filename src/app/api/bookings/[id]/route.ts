@@ -54,7 +54,21 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(booking)
+    // Serialize Decimal to Number for client components
+    const serializedBooking = {
+      ...booking,
+      totalPrice: Number(booking.totalPrice),
+      bookingVehicles: booking.bookingVehicles.map(vehicle => ({
+        ...vehicle,
+        bookingServices: vehicle.bookingServices.map(service => ({
+          ...service,
+          unitPrice: Number(service.unitPrice),
+          totalPrice: Number(service.totalPrice),
+        })),
+      })),
+    }
+
+    return NextResponse.json(serializedBooking)
   } catch (error) {
     console.error('Error fetching booking:', error)
     return NextResponse.json(

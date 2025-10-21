@@ -66,7 +66,27 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(invoice)
+    // Serialize Decimal to Number for client components
+    const serializedInvoice = {
+      ...invoice,
+      amount: Number(invoice.amount),
+      taxAmount: Number(invoice.taxAmount),
+      totalAmount: Number(invoice.totalAmount),
+      booking: {
+        ...invoice.booking,
+        totalPrice: Number(invoice.booking.totalPrice),
+        bookingVehicles: invoice.booking.bookingVehicles.map(vehicle => ({
+          ...vehicle,
+          bookingServices: vehicle.bookingServices.map(service => ({
+            ...service,
+            unitPrice: Number(service.unitPrice),
+            totalPrice: Number(service.totalPrice),
+          })),
+        })),
+      },
+    }
+
+    return NextResponse.json(serializedInvoice)
   } catch (error) {
     console.error('Error fetching invoice:', error)
     return NextResponse.json(
@@ -129,7 +149,19 @@ export async function PATCH(
       })
     }
 
-    return NextResponse.json(invoice)
+    // Serialize Decimal to Number for client components
+    const serializedInvoice = {
+      ...invoice,
+      amount: Number(invoice.amount),
+      taxAmount: Number(invoice.taxAmount),
+      totalAmount: Number(invoice.totalAmount),
+      booking: invoice.booking ? {
+        ...invoice.booking,
+        totalPrice: Number(invoice.booking.totalPrice),
+      } : invoice.booking,
+    }
+
+    return NextResponse.json(serializedInvoice)
   } catch (error) {
     console.error('Error updating invoice:', error)
     return NextResponse.json(

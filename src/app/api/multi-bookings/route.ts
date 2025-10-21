@@ -372,7 +372,21 @@ export async function POST(request: NextRequest) {
       console.error('Error sending emails/SMS:', emailError)
     }
 
-    return NextResponse.json(booking, { status: 201 })
+    // Serialize Decimal to Number for client components
+    const serializedBooking = {
+      ...booking,
+      totalPrice: Number(booking.totalPrice),
+      bookingVehicles: booking.bookingVehicles.map(vehicle => ({
+        ...vehicle,
+        bookingServices: vehicle.bookingServices.map(service => ({
+          ...service,
+          unitPrice: Number(service.unitPrice),
+          totalPrice: Number(service.totalPrice),
+        })),
+      })),
+    }
+
+    return NextResponse.json(serializedBooking, { status: 201 })
   } catch (error) {
     console.error('Error creating multi-booking:', error)
     
