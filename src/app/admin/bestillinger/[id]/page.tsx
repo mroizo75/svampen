@@ -84,14 +84,14 @@ export default async function BookingDetailsPage({ params }: { params: Promise<{
                   {v.bookingServices.map(s => (
                     <div key={s.id} className="flex justify-between mt-2">
                       <span>{s.service.name}</span>
-                      <span className="font-medium">kr {Number(s.totalPrice).toLocaleString()}</span>
+                      <span className="font-medium">kr {Number(s.totalPrice).toLocaleString('nb-NO')}</span>
                     </div>
                   ))}
                 </div>
               ))}
               <div className="flex justify-between text-xl font-bold pt-4 border-t">
                 <span>TOTAL</span>
-                <span className="text-blue-600">kr {Number(booking.totalPrice).toLocaleString()}</span>
+                <span className="text-blue-600">kr {Number(booking.totalPrice).toLocaleString('nb-NO')}</span>
               </div>
             </CardContent>
           </Card>
@@ -132,7 +132,7 @@ export default async function BookingDetailsPage({ params }: { params: Promise<{
                         </div>
                         <div className="text-right">
                           <p className="text-2xl font-bold text-blue-700">
-                            kr {Number(inv.totalAmount).toLocaleString()}
+                            kr {Number(inv.totalAmount).toLocaleString('nb-NO')}
                           </p>
                           <Badge className={
                             isPaid ? 'bg-green-500' : 

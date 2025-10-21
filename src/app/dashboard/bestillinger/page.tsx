@@ -151,20 +151,20 @@ export default function BookingsPage() {
                       <p className="text-lg font-bold text-blue-600">
                         kr {Number(booking.totalPrice).toLocaleString()},-
                       </p>
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={`/dashboard/bestillinger/${booking.id}`}>
-                          Se detaljer
-                        </Link>
-                      </Button>
+                      <div className="flex gap-2">
+                        <CancelBookingButton 
+                          bookingId={booking.id} 
+                          currentStatus={booking.status}
+                          scheduledDate={booking.scheduledDate}
+                          onSuccess={fetchBookings}
+                        />
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/dashboard/bestillinger/${booking.id}`}>
+                            Se detaljer
+                          </Link>
+                        </Button>
+                      </div>
                     </div>
-                    {!['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status) && 
-                     new Date(booking.scheduledDate) >= new Date() && (
-                      <CancelBookingButton 
-                        bookingId={booking.id} 
-                        currentStatus={booking.status}
-                        scheduledDate={booking.scheduledDate}
-                      />
-                    )}
                   </div>
                 </div>
               </CardContent>

@@ -159,7 +159,7 @@ export default async function AdminServicesPage() {
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">kr {totalRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">kr {totalRevenue.toLocaleString('nb-NO')}</div>
             <p className="text-xs text-muted-foreground">
               Fra alle tjenester
             </p>
@@ -245,8 +245,8 @@ export default async function AdminServicesPage() {
                           {prices.length > 0 ? (
                             <div>
                               <div className="font-medium">
-                                kr {minPrice.toLocaleString()}
-                                {minPrice !== maxPrice && ` - ${maxPrice.toLocaleString()}`}
+                                kr {minPrice.toLocaleString('nb-NO')}
+                                {minPrice !== maxPrice && ` - ${maxPrice.toLocaleString('nb-NO')}`}
                               </div>
                               <div className="text-sm text-gray-500">
                                 {service.servicePrices.length} prisnivå
@@ -270,7 +270,7 @@ export default async function AdminServicesPage() {
                           </div>
                         </TableCell>
                         <TableCell className="font-medium">
-                          kr {service.stats.totalRevenue.toLocaleString()}
+                          kr {service.stats.totalRevenue.toLocaleString('nb-NO')}
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>

@@ -90,7 +90,7 @@ export default async function AdminInvoicesPage() {
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">kr {totalRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">kr {totalRevenue.toLocaleString('nb-NO')}</div>
             <p className="text-xs text-muted-foreground">
               {paidInvoices.length} betalte fakturaer
             </p>
@@ -103,7 +103,7 @@ export default async function AdminInvoicesPage() {
             <Clock className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">kr {outstandingAmount.toLocaleString()}</div>
+            <div className="text-2xl font-bold">kr {outstandingAmount.toLocaleString('nb-NO')}</div>
             <p className="text-xs text-muted-foreground">
               {unpaidInvoices.length} ubetalte fakturaer
             </p>
@@ -211,7 +211,7 @@ export default async function AdminInvoicesPage() {
                           )}
                         </TableCell>
                         <TableCell className="font-medium">
-                          kr {Number(invoice.totalAmount).toLocaleString()},-
+                          kr {Number(invoice.totalAmount).toLocaleString('nb-NO')},-
                         </TableCell>
                         <TableCell>
                           {getInvoiceStatusBadge(invoice.status)}

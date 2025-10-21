@@ -198,7 +198,7 @@ export default async function DashboardPage() {
             <Car className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">kr {stats.totalSpent.toLocaleString()}</div>
+            <div className="text-2xl font-bold">kr {stats.totalSpent.toLocaleString('nb-NO')}</div>
             <p className="text-xs text-muted-foreground">
               Denne måneden
             </p>
@@ -287,7 +287,7 @@ export default async function DashboardPage() {
                     </div>
                     <div className="flex items-center space-x-4">
                       {getStatusBadge(booking.status)}
-                      <span className="font-semibold">kr {booking.totalPrice.toLocaleString()}</span>
+                      <span className="font-semibold">kr {booking.totalPrice.toLocaleString('nb-NO')}</span>
                     </div>
                   </div>
                 )

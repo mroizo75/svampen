@@ -306,6 +306,7 @@ export default function BookingDetailsPage() {
                 bookingId={booking.id} 
                 currentStatus={booking.status}
                 scheduledDate={booking.scheduledDate}
+                fullWidth
               />
               <Button asChild variant="outline" className="w-full">
                 <Link href="/dashboard/bestillinger">Tilbake til bestillinger</Link>

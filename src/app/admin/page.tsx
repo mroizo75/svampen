@@ -184,7 +184,7 @@ export default async function AdminDashboard() {
             <DollarSign className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">kr {stats.monthlyRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">kr {stats.monthlyRevenue.toLocaleString('nb-NO')}</div>
             <p className="text-xs text-muted-foreground">
               Denne måneden
             </p>
@@ -285,7 +285,7 @@ export default async function AdminDashboard() {
                         {booking.status === 'PENDING' && 'Venter'}
                         {booking.status === 'CONFIRMED' && 'Bekreftet'}
                       </Badge>
-                      <span className="font-semibold">kr {booking.totalPrice.toLocaleString()}</span>
+                      <span className="font-semibold">kr {booking.totalPrice.toLocaleString('nb-NO')}</span>
                     </div>
                   </div>
                 )

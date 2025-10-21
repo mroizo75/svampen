@@ -212,7 +212,7 @@ export default async function AdminReportsPage() {
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">kr {reportData.monthlyRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">kr {reportData.monthlyRevenue.toLocaleString('nb-NO')}</div>
             <p className={`text-xs flex items-center ${
               reportData.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'
             }`}>
@@ -259,7 +259,7 @@ export default async function AdminReportsPage() {
           <CardContent>
             <div className="text-2xl font-bold">
               kr {reportData.monthlyBookings.length > 0 
-                ? Math.round(reportData.monthlyRevenue / reportData.monthlyBookings.length).toLocaleString()
+                ? Math.round(reportData.monthlyRevenue / reportData.monthlyBookings.length).toLocaleString('nb-NO')
                 : '0'
               }
             </div>
@@ -289,7 +289,7 @@ export default async function AdminReportsPage() {
                       <div className="text-sm text-gray-500">{stats.count} bestillinger</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold">kr {stats.revenue.toLocaleString()}</div>
+                      <div className="font-semibold">kr {stats.revenue.toLocaleString('nb-NO')}</div>
                       <div className="text-sm text-gray-500">omsetning</div>
                     </div>
                   </div>
@@ -329,7 +329,7 @@ export default async function AdminReportsPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-semibold">kr {booking.totalPrice.toLocaleString()}</div>
+                        <div className="font-semibold">kr {booking.totalPrice.toLocaleString('nb-NO')}</div>
                         {getStatusBadge(booking.status)}
                       </div>
                     </div>
@@ -406,7 +406,7 @@ export default async function AdminReportsPage() {
                         </TableCell>
                         <TableCell>{getStatusBadge(booking.status)}</TableCell>
                         <TableCell className="text-right font-medium">
-                          kr {booking.totalPrice.toLocaleString()}
+                          kr {booking.totalPrice.toLocaleString('nb-NO')}
                         </TableCell>
                       </TableRow>
                     )

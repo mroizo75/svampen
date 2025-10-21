@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { 
   MoreHorizontal,
   Eye,
@@ -77,6 +86,9 @@ function getStatusBadge(status: string) {
 
 export default function BookingsTable({ bookings }: BookingsTableProps) {
   const router = useRouter()
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleRowClick = (bookingId: string, e: React.MouseEvent) => {
     // Ikke naviger hvis man klikket på dropdown-menyen eller dens innhold
@@ -85,6 +97,44 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
       return
     }
     router.push(`/admin/bestillinger/${bookingId}`)
+  }
+
+  const handleStatusChange = async (bookingId: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Kunne ikke oppdatere status')
+      }
+
+      router.refresh()
+    } catch (error) {
+      console.error('Error updating booking status:', error)
+      alert('Kunne ikke oppdatere status')
+    }
+  }
+
+  const handleCancelBooking = async () => {
+    if (!selectedBookingId) return
+    
+    try {
+      setIsLoading(true)
+      await handleStatusChange(selectedBookingId, 'CANCELLED')
+      setCancelDialogOpen(false)
+      setSelectedBookingId(null)
+    } catch (error) {
+      console.error('Error cancelling booking:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -149,7 +199,7 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
                   {getStatusBadge(booking.status)}
                 </TableCell>
                 <TableCell className="font-medium">
-                  kr {booking.totalPrice.toLocaleString()}
+                  kr {booking.totalPrice.toLocaleString('nb-NO')}
                 </TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
@@ -173,20 +223,42 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
                         Se detaljer
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleStatusChange(booking.id, 'CONFIRMED')
+                        }}
+                      >
                         <CheckCircle className="mr-2 h-4 w-4" />
                         Bekreft
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleStatusChange(booking.id, 'IN_PROGRESS')
+                        }}
+                      >
                         <Clock className="mr-2 h-4 w-4" />
                         Marker som pågår
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleStatusChange(booking.id, 'COMPLETED')
+                        }}
+                      >
                         <CheckCircle className="mr-2 h-4 w-4" />
                         Marker som fullført
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-red-600">
+                      <DropdownMenuItem 
+                        className="text-red-600"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedBookingId(booking.id)
+                          setCancelDialogOpen(true)
+                        }}
+                      >
                         <XCircle className="mr-2 h-4 w-4" />
                         Avbestill
                       </DropdownMenuItem>
@@ -198,6 +270,34 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
           })}
         </TableBody>
       </Table>
+
+      {/* Cancel Booking Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Avbestill bestilling</DialogTitle>
+            <DialogDescription>
+              Er du sikker på at du vil avbestille denne bestillingen?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCancelDialogOpen(false)}
+              disabled={isLoading}
+            >
+              Avbryt
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelBooking}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Avbestiller...' : 'Ja, avbestill'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

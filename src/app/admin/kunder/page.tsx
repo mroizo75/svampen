@@ -278,7 +278,7 @@ export default async function AdminCustomersPage() {
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">
-                        kr {customer.stats.totalSpent.toLocaleString()}
+                        kr {customer.stats.totalSpent.toLocaleString('nb-NO')}
                       </TableCell>
                       <TableCell>
                         {customer.stats.lastBooking ? (

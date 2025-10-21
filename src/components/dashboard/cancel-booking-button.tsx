@@ -10,7 +10,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle, XCircle } from 'lucide-react'
@@ -19,12 +18,16 @@ interface CancelBookingButtonProps {
   bookingId: string
   currentStatus: string
   scheduledDate: string
+  onSuccess?: () => void
+  fullWidth?: boolean
 }
 
 export default function CancelBookingButton({ 
   bookingId, 
   currentStatus,
-  scheduledDate 
+  scheduledDate,
+  onSuccess,
+  fullWidth = false
 }: CancelBookingButtonProps) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
@@ -32,25 +35,19 @@ export default function CancelBookingButton({
   const [error, setError] = useState('')
 
   // Sjekk om bookingen kan avbestilles
-  const canCancel = () => {
-    // Ikke tillat avbestilling av allerede avbestilte/fullførte bookinger
-    if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(currentStatus)) {
-      return false
-    }
+  // Ikke vis knappen hvis status er CANCELLED, COMPLETED eller NO_SHOW
+  const cannotCancel = ['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(currentStatus)
 
-    // Ikke tillat avbestilling av bookinger i fortiden
-    const bookingDate = new Date(scheduledDate)
-    const now = new Date()
-    now.setHours(0, 0, 0, 0) // Reset tid for å sammenligne bare dato
-    
-    if (bookingDate < now) {
-      return false
-    }
+  if (cannotCancel) {
+    return null
+  }
 
-    return true
+  const handleOpen = () => {
+    setIsOpen(true)
   }
 
   const handleCancel = async () => {
+    console.log('Cancelling booking:', bookingId)
     try {
       setIsLoading(true)
       setError('')
@@ -72,9 +69,15 @@ export default function CancelBookingButton({
       }
 
       setIsOpen(false)
-      router.refresh()
       
-      // Vis suksess melding
+      // Kall onSuccess callback hvis den er definert (for å oppdatere tabellvisning)
+      if (onSuccess) {
+        onSuccess()
+      } else {
+        // Fallback til router.refresh for detaljvisning
+        router.refresh()
+      }
+      
       alert('✅ Bestilling avbestilt')
     } catch (error) {
       console.error('Error cancelling booking:', error)
@@ -84,59 +87,61 @@ export default function CancelBookingButton({
     }
   }
 
-  if (!canCancel()) {
-    return null
-  }
-
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="destructive" className="w-full">
-          <XCircle className="mr-2 h-4 w-4" />
-          Avbestill bestilling
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Avbestill bestilling</DialogTitle>
-          <DialogDescription>
-            Er du sikker på at du vil avbestille denne bestillingen?
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Button 
+        variant="outline" 
+        size={fullWidth ? "default" : "sm"}
+        className={`text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 ${fullWidth ? 'w-full' : ''}`}
+        onClick={handleOpen}
+        type="button"
+      >
+        <XCircle className={`mr-2 ${fullWidth ? 'h-4 w-4' : 'h-3.5 w-3.5'}`} />
+        Avbestill {fullWidth ? 'bestilling' : ''}
+      </Button>
+      
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Avbestill bestilling</DialogTitle>
+            <DialogDescription>
+              Er du sikker på at du vil avbestille denne bestillingen?
+            </DialogDescription>
+          </DialogHeader>
 
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            <strong>Viktig:</strong> Hvis du avbestiller mindre enn 24 timer før avtalt tid,
-            kan det påløpe et avbestillingsgebyr.
-          </AlertDescription>
-        </Alert>
-
-        {error && (
-          <Alert variant="destructive">
+          <Alert>
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>
+              <strong>Viktig:</strong> Hvis du avbestiller mindre enn 24 timer før avtalt tid,
+              kan det påløpe et avbestillingsgebyr.
+            </AlertDescription>
           </Alert>
-        )}
 
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => setIsOpen(false)}
-            disabled={isLoading}
-          >
-            Avbryt
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={handleCancel}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Avbestiller...' : 'Ja, avbestill'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsOpen(false)}
+              disabled={isLoading}
+            >
+              Avbryt
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancel}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Avbestiller...' : 'Ja, avbestill'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
-
