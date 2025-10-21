@@ -140,12 +140,6 @@ export default function LoginPage() {
                   Registrer deg her
                 </Link>
               </div>
-
-              <div className="text-center text-xs text-gray-500">
-                For testing:<br />
-                Admin: admin@svampen.no / admin123<br />
-                Bruker: test@example.com / test123
-              </div>
             </form>
           </CardContent>
         </Card>
