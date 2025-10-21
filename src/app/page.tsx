@@ -1,103 +1,220 @@
-import Image from "next/image";
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { MainLayout } from '@/components/layout/main-layout'
+import { 
+  Car, 
+  Clock, 
+  Star, 
+  CheckCircle,
+  Sparkles,
+  Shield,
+  ArrowRight
+} from 'lucide-react'
 
 export default function Home() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <MainLayout>
+      {/* Hero Section */}
+      <section className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+        <div className="container mx-auto px-4 py-16 md:py-24">
+          <div className="max-w-3xl">
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              Profesjonell bil- og båtpleie
+            </h1>
+            <p className="text-xl md:text-2xl mb-8 text-blue-100">
+              Vi har mer enn 10 års erfaring og leverer kvalitet til konkurransedyktige priser!
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 font-semibold" asChild>
+                <Link href="/bestill">
+                  <Clock className="mr-2 h-5 w-5" />
+                  Bestill tid nå
+                </Link>
+              </Button>
+              <Button size="lg" className="bg-blue-700 text-white border-2 border-white hover:bg-white hover:text-blue-700 font-semibold" asChild>
+                <Link href="/tjenester">
+                  Se våre tjenester
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+      </section>
+
+      {/* Services Section */}
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Våre tjenester</h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Fra enkel vask til komplett pleie - vi har pakken som passer ditt behov
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Mini Package */}
+            <Card className="relative overflow-hidden">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Car className="mr-2 h-5 w-5 text-blue-600" />
+                  Mini-pakke
+                </CardTitle>
+                <CardDescription>Fra kr 345,-</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="mb-4">Vår minste pakke med utvendig vask av bilen din.</p>
+                <ul className="space-y-2 text-sm">
+                  <li className="flex items-center">
+                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                    Utvendig vask
+                  </li>
+                  <li className="flex items-center">
+                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                    Hjulvask
+                  </li>
+                </ul>
+                <Button className="w-full mt-4" asChild>
+                  <Link href="/bestill">Bestill nå</Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Medium Package */}
+            <Card className="relative overflow-hidden border-blue-200">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Sparkles className="mr-2 h-5 w-5 text-blue-600" />
+                  Medium-pakke
+                </CardTitle>
+                <CardDescription>Fra kr 1450,-</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="mb-4">Populær pakke for å holde bilen ren mellom hver polering.</p>
+                <ul className="space-y-2 text-sm">
+                  <li className="flex items-center">
+                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                    Alt fra Mini-pakke
+                  </li>
+                  <li className="flex items-center">
+                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                    Innvendig støvsuging
+                  </li>
+                  <li className="flex items-center">
+                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                    Dashbord behandling
+                  </li>
+                </ul>
+                <Button className="w-full mt-4" asChild>
+                  <Link href="/bestill">Bestill nå</Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Premium Package */}
+            <Card className="relative overflow-hidden border-gold bg-gradient-to-b from-yellow-50 to-white">
+              <div className="absolute top-4 right-4">
+                <Star className="h-5 w-5 text-yellow-500 fill-current" />
+              </div>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Shield className="mr-2 h-5 w-5 text-yellow-600" />
+                  Eksklusiv-pakke
+                </CardTitle>
+                <CardDescription className="text-yellow-700">
+                  <strong>BESTSELGER</strong> - Fra kr 1990,-
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="mb-4">Vår desidert mest populære pakke med komplett pleie.</p>
+                <ul className="space-y-2 text-sm">
+                  <li className="flex items-center">
+                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                    Alt fra Medium-pakke
+                  </li>
+                  <li className="flex items-center">
+                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                    Polering
+                  </li>
+                  <li className="flex items-center">
+                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                    Voks behandling
+                  </li>
+                  <li className="flex items-center">
+                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                    Innvendig rens
+                  </li>
+                </ul>
+                <Button className="w-full mt-4 bg-yellow-600 hover:bg-yellow-700" asChild>
+                  <Link href="/bestill">Bestill nå</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-16 bg-blue-600 text-white">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            Klar for å gi bilen din den pleien den fortjener?
+          </h2>
+          <p className="text-xl mb-8 text-blue-100">
+            Book din time i dag og opplev forskjellen profesjonell bilpleie gjør
+          </p>
+          <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100" asChild>
+            <Link href="/bestill">
+              Bestill tid nå
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Link>
+          </Button>
+        </div>
+      </section>
+
+      {/* Customer Benefits */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">Hvorfor velge Svampen?</h2>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Star className="h-8 w-8 text-blue-600" />
+              </div>
+              <h3 className="font-semibold mb-2">10+ års erfaring</h3>
+              <p className="text-gray-600 text-sm">Profesjonell kvalitet du kan stole på</p>
+            </div>
+            
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+              <h3 className="font-semibold mb-2">Klippekort</h3>
+              <p className="text-gray-600 text-sm">Hver 5. vaskepakke GRATIS</p>
+            </div>
+            
+            <div className="text-center">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Clock className="h-8 w-8 text-purple-600" />
+              </div>
+              <h3 className="font-semibold mb-2">Rask service</h3>
+              <p className="text-gray-600 text-sm">Effektiv håndtering av din bil</p>
+            </div>
+            
+            <div className="text-center">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Shield className="h-8 w-8 text-orange-600" />
+              </div>
+              <h3 className="font-semibold mb-2">Konkurransedyktige priser</h3>
+              <p className="text-gray-600 text-sm">Kvalitet til rettferdig pris</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </MainLayout>
+  )
 }
