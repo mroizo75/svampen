@@ -193,8 +193,8 @@ export default function Home() {
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
-              <h3 className="font-semibold mb-2">Klippekort</h3>
-              <p className="text-gray-600 text-sm">Hver 5. vaskepakke GRATIS</p>
+              <h3 className="font-semibold mb-2">Enkel booking</h3>
+              <p className="text-gray-600 text-sm">Book online når det passer deg</p>
             </div>
             
             <div className="text-center">
