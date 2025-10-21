@@ -89,6 +89,7 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null)
 
   const handleRowClick = (bookingId: string, e: React.MouseEvent) => {
     // Ikke naviger hvis man klikket på dropdown-menyen eller dens innhold
@@ -100,7 +101,13 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
   }
 
   const handleStatusChange = async (bookingId: string, newStatus: string) => {
+    console.log('🔵 Starting status change for booking:', bookingId, 'to:', newStatus)
+    setUpdatingBookingId(bookingId)
     try {
+      // Legg til timeout på fetch
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 sekunder timeout
+
       const response = await fetch(`/api/bookings/${bookingId}`, {
         method: 'PATCH',
         headers: {
@@ -109,31 +116,87 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
         body: JSON.stringify({
           status: newStatus,
         }),
+        signal: controller.signal,
       })
 
+      clearTimeout(timeoutId)
+
       if (!response.ok) {
-        throw new Error('Kunne ikke oppdatere status')
+        const error = await response.json()
+        throw new Error(error.message || 'Kunne ikke oppdatere status')
       }
 
-      router.refresh()
+      console.log('✅ Status change successful, reloading page')
+      
+      // Bruk window.location.reload() for å garantere at siden oppdateres
+      window.location.reload()
     } catch (error) {
-      console.error('Error updating booking status:', error)
-      alert('Kunne ikke oppdatere status')
+      setUpdatingBookingId(null)
+      if (error instanceof Error && error.name === 'AbortError') {
+        alert('Forespørselen tok for lang tid. Vennligst prøv igjen.')
+      } else {
+        console.error('Error updating booking status:', error)
+        alert(error instanceof Error ? error.message : 'Kunne ikke oppdatere status')
+      }
+      throw error // Re-throw for proper error handling
     }
   }
 
   const handleCancelBooking = async () => {
     if (!selectedBookingId) return
     
+    const bookingToCancel = selectedBookingId
+    
     try {
       setIsLoading(true)
-      await handleStatusChange(selectedBookingId, 'CANCELLED')
+      
+      // Gjør API-kallet
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
+
+      const response = await fetch(`/api/bookings/${bookingToCancel}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'CANCELLED',
+        }),
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Kunne ikke avbestille')
+      }
+      
+      console.log('✅ API call successful, closing dialog')
+      
+      // Lukk dialogen først
       setCancelDialogOpen(false)
       setSelectedBookingId(null)
+      setIsLoading(false)
+      
+      // Vent til dialogen er HELT lukket (animasjon tar ~200ms)
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      console.log('✅ Dialog closed, reloading page')
+      
+      // Bruk window.location.reload() i stedet for router.refresh()
+      // Dette garanterer at siden lastes på nytt uten UI-problemer
+      window.location.reload()
+      
     } catch (error) {
       console.error('Error cancelling booking:', error)
-    } finally {
       setIsLoading(false)
+      
+      if (error instanceof Error && error.name === 'AbortError') {
+        alert('Forespørselen tok for lang tid. Vennligst prøv igjen.')
+      } else {
+        alert(error instanceof Error ? error.message : 'Kunne ikke avbestille bestilling')
+      }
     }
   }
 
@@ -157,10 +220,12 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
             const serviceCount = booking.bookingVehicles.reduce((sum, v) => sum + v.bookingServices.length, 0)
             const vehicleNames = booking.bookingVehicles.map(v => v.vehicleType.name).join(', ')
             
+            const isUpdating = updatingBookingId === booking.id
+            
             return (
               <TableRow 
                 key={booking.id}
-                className="cursor-pointer hover:bg-gray-50 transition-colors"
+                className={`cursor-pointer hover:bg-gray-50 transition-colors ${isUpdating ? 'opacity-50 pointer-events-none' : ''}`}
                 onClick={(e) => handleRowClick(booking.id, e)}
               >
                 <TableCell>
@@ -208,8 +273,13 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
                         variant="ghost" 
                         className="h-8 w-8 p-0"
                         onClick={(e) => e.stopPropagation()}
+                        disabled={isUpdating}
                       >
-                        <MoreHorizontal className="h-4 w-4" />
+                        {isUpdating ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600" />
+                        ) : (
+                          <MoreHorizontal className="h-4 w-4" />
+                        )}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -218,6 +288,7 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
                           e.stopPropagation()
                           router.push(`/admin/bestillinger/${booking.id}`)
                         }}
+                        disabled={isUpdating}
                       >
                         <Eye className="mr-2 h-4 w-4" />
                         Se detaljer
@@ -228,6 +299,7 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
                           e.stopPropagation()
                           handleStatusChange(booking.id, 'CONFIRMED')
                         }}
+                        disabled={isUpdating}
                       >
                         <CheckCircle className="mr-2 h-4 w-4" />
                         Bekreft
@@ -237,6 +309,7 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
                           e.stopPropagation()
                           handleStatusChange(booking.id, 'IN_PROGRESS')
                         }}
+                        disabled={isUpdating}
                       >
                         <Clock className="mr-2 h-4 w-4" />
                         Marker som pågår
@@ -246,6 +319,7 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
                           e.stopPropagation()
                           handleStatusChange(booking.id, 'COMPLETED')
                         }}
+                        disabled={isUpdating}
                       >
                         <CheckCircle className="mr-2 h-4 w-4" />
                         Marker som fullført
@@ -258,6 +332,7 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
                           setSelectedBookingId(booking.id)
                           setCancelDialogOpen(true)
                         }}
+                        disabled={isUpdating}
                       >
                         <XCircle className="mr-2 h-4 w-4" />
                         Avbestill
