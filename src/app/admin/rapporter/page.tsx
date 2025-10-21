@@ -118,13 +118,40 @@ async function getReportData() {
       ? ((monthlyBookings.length - lastMonthBookings.length) / lastMonthBookings.length) * 100
       : 0
 
+    // Serialize Decimal to Number for client components
+    const serializedMonthlyBookings = monthlyBookings.map(booking => ({
+      ...booking,
+      totalPrice: Number(booking.totalPrice),
+      bookingVehicles: booking.bookingVehicles.map(vehicle => ({
+        ...vehicle,
+        bookingServices: vehicle.bookingServices.map(service => ({
+          ...service,
+          unitPrice: Number(service.unitPrice),
+          totalPrice: Number(service.totalPrice),
+        })),
+      })),
+    }))
+
+    const serializedYearlyBookings = yearlyBookings.map(booking => ({
+      ...booking,
+      totalPrice: Number(booking.totalPrice),
+      bookingVehicles: booking.bookingVehicles.map(vehicle => ({
+        ...vehicle,
+        bookingServices: vehicle.bookingServices.map(service => ({
+          ...service,
+          unitPrice: Number(service.unitPrice),
+          totalPrice: Number(service.totalPrice),
+        })),
+      })),
+    }))
+
     return {
-      monthlyBookings,
+      monthlyBookings: serializedMonthlyBookings,
       monthlyRevenue,
       revenueGrowth,
       bookingGrowth,
       serviceStats,
-      yearlyBookings,
+      yearlyBookings: serializedYearlyBookings,
     }
   } catch (error) {
     console.error('Error fetching report data:', error)

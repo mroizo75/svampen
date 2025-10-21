@@ -165,8 +165,8 @@ export async function sendBookingConfirmationSMS({
   const message = `Hei ${customerName}! 
 Din booking hos Svampen er bekreftet!
 
-📅 ${formattedDate} kl. ${scheduledTime}
-🔢 Booking-ID: #${bookingId.substring(0, 8)}
+Dato: ${formattedDate} kl. ${scheduledTime}
+Booking-ID: #${bookingId.substring(0, 8)}
 
 Du får en påminnelse dagen før.
 

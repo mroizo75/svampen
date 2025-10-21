@@ -37,7 +37,21 @@ async function getUserBookings(userId: string) {
       take: 5, // Vis bare de siste 5
     })
 
-    return bookings
+    // Serialize Decimal to Number for client components
+    const serializedBookings = bookings.map(booking => ({
+      ...booking,
+      totalPrice: Number(booking.totalPrice),
+      bookingVehicles: booking.bookingVehicles.map(vehicle => ({
+        ...vehicle,
+        bookingServices: vehicle.bookingServices.map(service => ({
+          ...service,
+          unitPrice: Number(service.unitPrice),
+          totalPrice: Number(service.totalPrice),
+        })),
+      })),
+    }))
+
+    return serializedBookings
   } catch (error) {
     console.error('Error fetching user bookings:', error)
     return []
@@ -85,7 +99,7 @@ async function getUserStats(userId: string) {
       total,
       completed,
       upcoming,
-      totalSpent: totalSpent._sum.totalPrice || 0,
+      totalSpent: Number(totalSpent._sum.totalPrice) || 0,
     }
   } catch (error) {
     console.error('Error fetching user stats:', error)

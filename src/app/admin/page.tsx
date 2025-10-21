@@ -104,13 +104,27 @@ async function getDashboardStats() {
       take: 5,
     })
 
+    // Serialize Decimal to Number for client components
+    const serializedUpcomingBookings = upcomingBookings.map(booking => ({
+      ...booking,
+      totalPrice: Number(booking.totalPrice),
+      bookingVehicles: booking.bookingVehicles.map(vehicle => ({
+        ...vehicle,
+        bookingServices: vehicle.bookingServices.map(service => ({
+          ...service,
+          unitPrice: Number(service.unitPrice),
+          totalPrice: Number(service.totalPrice),
+        })),
+      })),
+    }))
+
     return {
       todayBookings,
       todayCompleted,
       monthlyBookings,
-      monthlyRevenue: monthlyRevenue._sum.totalPrice || 0,
+      monthlyRevenue: Number(monthlyRevenue._sum.totalPrice) || 0,
       totalCustomers,
-      upcomingBookings,
+      upcomingBookings: serializedUpcomingBookings,
     }
   } catch (error) {
     console.error('Error fetching dashboard stats:', error)
