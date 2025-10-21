@@ -32,7 +32,15 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
-        setError('Ugyldig e-post eller passord')
+        // NextAuth sender feilmeldingen som en string i result.error
+        // Hvis det er en rate limit-feil, vis den spesifikke meldingen
+        if (result.error.includes('For mange')) {
+          setError(result.error)
+        } else if (result.error === 'CredentialsSignin') {
+          setError('Ugyldig e-post eller passord')
+        } else {
+          setError(result.error || 'Ugyldig e-post eller passord')
+        }
       } else {
         // Hent session for å sjekke rolle
         const session = await getSession()
@@ -43,6 +51,7 @@ export default function LoginPage() {
         }
       }
     } catch (error) {
+      console.error('Login error:', error)
       setError('En feil oppstod. Prøv igjen.')
     } finally {
       setIsLoading(false)
@@ -107,8 +116,17 @@ export default function LoginPage() {
               </div>
 
               {error && (
-                <div className="text-sm text-red-600 text-center">
-                  {error}
+                <div className={`p-3 rounded-lg text-sm text-center ${
+                  error.includes('For mange') 
+                    ? 'bg-orange-50 text-orange-900 border border-orange-200' 
+                    : 'bg-red-50 text-red-900 border border-red-200'
+                }`}>
+                  <p className="font-medium">
+                    {error.includes('For mange') ? '⚠️ For mange forsøk' : '❌ Innlogging feilet'}
+                  </p>
+                  <p className="mt-1 text-xs">
+                    {error}
+                  </p>
                 </div>
               )}
 

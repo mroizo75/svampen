@@ -3,6 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
 import { UserRole } from '@prisma/client'
+import { rateLimiter } from './rate-limiter'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -14,7 +15,18 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null
+          throw new Error('E-post og passord er påkrevd')
+        }
+
+        // Sjekk rate limit basert på email
+        const emailLimit = rateLimiter.checkEmail(credentials.email)
+        if (!emailLimit.allowed) {
+          const minutesLeft = emailLimit.blockedUntil 
+            ? Math.ceil((emailLimit.blockedUntil.getTime() - Date.now()) / 60000)
+            : 30
+          throw new Error(
+            `For mange innloggingsforsøk. Kontoen er midlertidig låst. Prøv igjen om ${minutesLeft} minutter.`
+          )
         }
 
         try {
@@ -25,7 +37,8 @@ export const authOptions: NextAuthOptions = {
           })
 
           if (!user) {
-            return null
+            // Ikke avslør om brukeren eksisterer eller ikke
+            throw new Error('Ugyldig e-post eller passord')
           }
 
           const isPasswordValid = await bcrypt.compare(
@@ -34,8 +47,11 @@ export const authOptions: NextAuthOptions = {
           )
 
           if (!isPasswordValid) {
-            return null
+            throw new Error('Ugyldig e-post eller passord')
           }
+
+          // Vellykket innlogging - reset rate limit for denne e-posten
+          rateLimiter.resetEmail(credentials.email)
 
           return {
             id: user.id,
@@ -48,7 +64,11 @@ export const authOptions: NextAuthOptions = {
           }
         } catch (error) {
           console.error('Auth error:', error)
-          return null
+          // Re-throw error for å vise brukeren
+          if (error instanceof Error) {
+            throw error
+          }
+          throw new Error('En feil oppstod under innlogging')
         }
       }
     })
