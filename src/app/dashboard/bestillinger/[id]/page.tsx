@@ -21,6 +21,7 @@ import {
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale'
+import CancelBookingButton from '@/components/dashboard/cancel-booking-button'
 
 interface BookingDetails {
   id: string
@@ -301,6 +302,11 @@ export default function BookingDetailsPage() {
           {/* Actions */}
           <Card>
             <CardContent className="pt-6 space-y-2">
+              <CancelBookingButton 
+                bookingId={booking.id} 
+                currentStatus={booking.status}
+                scheduledDate={booking.scheduledDate}
+              />
               <Button asChild variant="outline" className="w-full">
                 <Link href="/dashboard/bestillinger">Tilbake til bestillinger</Link>
               </Button>

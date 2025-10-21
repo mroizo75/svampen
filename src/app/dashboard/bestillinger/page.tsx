@@ -9,6 +9,7 @@ import { Calendar, Clock, Car, MapPin } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale'
+import CancelBookingButton from '@/components/dashboard/cancel-booking-button'
 
 interface Booking {
   id: string
@@ -145,15 +146,25 @@ export default function BookingsPage() {
                     </div>
                   ))}
                   
-                  <div className="flex justify-between items-center pt-3 border-t">
-                    <p className="text-lg font-bold text-blue-600">
-                      kr {Number(booking.totalPrice).toLocaleString()},-
-                    </p>
-                    <Button asChild variant="outline">
-                      <Link href={`/dashboard/bestillinger/${booking.id}`}>
-                        Se detaljer
-                      </Link>
-                    </Button>
+                  <div className="flex flex-col gap-2 pt-3 border-t">
+                    <div className="flex justify-between items-center">
+                      <p className="text-lg font-bold text-blue-600">
+                        kr {Number(booking.totalPrice).toLocaleString()},-
+                      </p>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/dashboard/bestillinger/${booking.id}`}>
+                          Se detaljer
+                        </Link>
+                      </Button>
+                    </div>
+                    {!['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status) && 
+                     new Date(booking.scheduledDate) >= new Date() && (
+                      <CancelBookingButton 
+                        bookingId={booking.id} 
+                        currentStatus={booking.status}
+                        scheduledDate={booking.scheduledDate}
+                      />
+                    )}
                   </div>
                 </div>
               </CardContent>
