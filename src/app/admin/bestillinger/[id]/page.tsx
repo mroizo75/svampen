@@ -3,7 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { ArrowLeft, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import CompleteBookingButton from '@/components/admin/complete-booking-button'
 import InvoiceActions from '@/components/admin/invoice-actions'
@@ -28,23 +29,45 @@ async function getBooking(id: string) {
   })
 }
 
-export default async function BookingDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function BookingDetailsPage({ 
+  params,
+  searchParams 
+}: { 
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ success?: string }>
+}) {
   const { id } = await params
+  const { success } = await searchParams
   const booking = await getBooking(id)
   if (!booking) notFound()
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button asChild variant="outline" size="icon">
-          <Link href="/admin/bestillinger"><ArrowLeft className="h-4 w-4" /></Link>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Bestilling #{booking.id.substring(0, 8)}</h1>
-          <p className="text-gray-600">
-            {booking.user.firstName} {booking.user.lastName} - {new Date(booking.scheduledDate).toLocaleDateString('nb-NO')}
-          </p>
+      {/* Success Message */}
+      {success === 'true' && (
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            <strong>✅ Bestilling opprettet!</strong> Bookingen er nå registrert i systemet.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button asChild variant="outline" size="icon">
+            <Link href="/admin/bestillinger"><ArrowLeft className="h-4 w-4" /></Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Bestilling #{booking.id.substring(0, 8)}</h1>
+            <p className="text-gray-600">
+              {booking.user.firstName} {booking.user.lastName} - {new Date(booking.scheduledDate).toLocaleDateString('nb-NO')}
+            </p>
+          </div>
         </div>
+        <Button asChild>
+          <Link href="/admin/bestillinger/ny">Ny bestilling</Link>
+        </Button>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">

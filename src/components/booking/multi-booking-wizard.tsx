@@ -290,6 +290,8 @@ export function MultiBookingWizard({
         scheduledDate: bookingData.scheduledDate instanceof Date 
           ? bookingData.scheduledDate.toISOString().split('T')[0]
           : bookingData.scheduledDate,
+        isAdminBooking,
+        adminOverride,
       }
 
       const response = await fetch('/api/multi-bookings', {
@@ -302,8 +304,15 @@ export function MultiBookingWizard({
 
       if (response.ok) {
         const booking = await response.json()
-        // Redirect til offentlig bekreftelsesside (fungerer for både gjester og innloggede brukere)
-        router.push(`/bestill/bekreftelse?id=${booking.id}`)
+        
+        // Redirect avhengig av om det er admin-booking eller kunde-booking
+        if (isAdminBooking) {
+          // Admin-booking: Gå tilbake til admin bestillingsoversikt med suksessmelding
+          router.push(`/admin/bestillinger/${booking.id}?success=true`)
+        } else {
+          // Kunde-booking: Gå til offentlig bekreftelsesside
+          router.push(`/bestill/bekreftelse?id=${booking.id}`)
+        }
       } else {
         const data = await response.json()
         setError(data.message || 'En feil oppstod ved bestilling')
@@ -370,31 +379,43 @@ export function MultiBookingWizard({
         </CardHeader>
         <CardContent>
           {/* Tilgjengelig tid advarsel (kun for admin bookinger) */}
-          {isAdminBooking && currentStep === 1 && maxAvailableMinutes !== null && !adminOverride && (
+          {isAdminBooking && currentStep === 1 && maxAvailableMinutes !== null && (
             <Alert className={`mb-6 ${
-              bookingData.totalDuration > maxAvailableMinutes 
-                ? 'bg-orange-50 border-orange-300' 
-                : 'bg-blue-50 border-blue-300'
+              adminOverride 
+                ? 'bg-green-50 border-green-300'
+                : bookingData.totalDuration > maxAvailableMinutes 
+                  ? 'bg-orange-50 border-orange-300' 
+                  : 'bg-blue-50 border-blue-300'
             }`}>
               <AlertTriangle className={`h-4 w-4 ${
-                bookingData.totalDuration > maxAvailableMinutes ? 'text-orange-600' : 'text-blue-600'
+                adminOverride 
+                  ? 'text-green-600'
+                  : bookingData.totalDuration > maxAvailableMinutes ? 'text-orange-600' : 'text-blue-600'
               }`} />
               <AlertDescription>
                 <div className="space-y-2">
-                  <div className={
-                    bookingData.totalDuration > maxAvailableMinutes ? 'text-orange-900' : 'text-blue-900'
-                  }>
-                    <strong>Tilgjengelig tid på valgt dato:</strong> {Math.floor(maxAvailableMinutes / 60)}t {maxAvailableMinutes % 60}min
-                    {bookingData.totalDuration > 0 && (
-                      <>
-                        <br />
-                        <strong>Valgt varighet:</strong> {Math.floor(bookingData.totalDuration / 60)}t {bookingData.totalDuration % 60}min
-                      </>
-                    )}
-                  </div>
-                  {bookingData.totalDuration > maxAvailableMinutes && (
-                    <div className="text-orange-800 text-sm font-medium">
-                      ⚠️ Varighet overskrider tilgjengelig tid med {Math.floor((bookingData.totalDuration - maxAvailableMinutes) / 60)}t {(bookingData.totalDuration - maxAvailableMinutes) % 60}min
+                  {!adminOverride ? (
+                    <>
+                      <div className={
+                        bookingData.totalDuration > maxAvailableMinutes ? 'text-orange-900' : 'text-blue-900'
+                      }>
+                        <strong>Tilgjengelig tid på valgt dato:</strong> {Math.floor(maxAvailableMinutes / 60)}t {maxAvailableMinutes % 60}min
+                        {bookingData.totalDuration > 0 && (
+                          <>
+                            <br />
+                            <strong>Valgt varighet:</strong> {Math.floor(bookingData.totalDuration / 60)}t {bookingData.totalDuration % 60}min
+                          </>
+                        )}
+                      </div>
+                      {bookingData.totalDuration > maxAvailableMinutes && (
+                        <div className="text-orange-800 text-sm font-medium">
+                          ⚠️ Varighet overskrider tilgjengelig tid med {Math.floor((bookingData.totalDuration - maxAvailableMinutes) / 60)}t {(bookingData.totalDuration - maxAvailableMinutes) % 60}min
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-green-900 font-medium">
+                      🔓 Admin override aktivert - Alle tidsbegrensninger er overstyrte
                     </div>
                   )}
                   <div className="flex items-center space-x-2 pt-2">
@@ -493,17 +514,60 @@ export function MultiBookingWizard({
 
           {/* Step 3: Date & Time */}
           {currentStep === 3 && (
-            <DateTimeSelector
-              selectedDate={bookingData.scheduledDate}
-              selectedTime={bookingData.scheduledTime}
-              totalDuration={bookingData.totalDuration}
-              onDateChange={(date) => 
-                setBookingData(prev => ({ ...prev, scheduledDate: date }))
-              }
-              onTimeChange={(time) => 
-                setBookingData(prev => ({ ...prev, scheduledTime: time }))
-              }
-            />
+            <>
+              {/* Admin override toggle - alltid synlig for admin */}
+              {isAdminBooking && (
+                <Alert className={`mb-6 ${
+                  adminOverride 
+                    ? 'bg-green-50 border-green-300' 
+                    : 'bg-blue-50 border-blue-300'
+                }`}>
+                  <Shield className={`h-4 w-4 ${
+                    adminOverride ? 'text-green-600' : 'text-blue-600'
+                  }`} />
+                  <AlertDescription>
+                    <div className="space-y-2">
+                      {adminOverride ? (
+                        <div className="text-green-900 font-medium">
+                          🔓 Admin override aktivert - Alle tidsbegrensninger er overstyrt
+                        </div>
+                      ) : (
+                        <div className="text-blue-900">
+                          <strong>Admin booking:</strong> Du kan aktivere override for å booke på opptatte tider
+                        </div>
+                      )}
+                      <div className="flex items-center space-x-2 pt-2">
+                        <Checkbox
+                          id="adminOverrideStep3"
+                          checked={adminOverride}
+                          onCheckedChange={(checked) => setAdminOverride(!!checked)}
+                        />
+                        <Label
+                          htmlFor="adminOverrideStep3"
+                          className="text-sm font-medium cursor-pointer flex items-center"
+                        >
+                          <Shield className="h-3 w-3 mr-1" />
+                          Admin override - Tillat booking uansett tilgjengelig tid
+                        </Label>
+                      </div>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+              <DateTimeSelector
+                selectedDate={bookingData.scheduledDate}
+                selectedTime={bookingData.scheduledTime}
+                totalDuration={bookingData.totalDuration}
+                onDateChange={(date) => 
+                  setBookingData(prev => ({ ...prev, scheduledDate: date }))
+                }
+                onTimeChange={(time) => 
+                  setBookingData(prev => ({ ...prev, scheduledTime: time }))
+                }
+                isAdminBooking={isAdminBooking}
+                adminOverride={adminOverride}
+              />
+            </>
           )}
 
           {/* Step 4: Summary */}

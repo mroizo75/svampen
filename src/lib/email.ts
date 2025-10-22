@@ -275,12 +275,12 @@ export async function sendAdminNotificationEmail(data: BookingEmailData) {
 
     const result = await resend.emails.send({
       from: 'Svampen Booking <booking@innut.no>',
-      to: 'joachim@amento.no', // Admin e-post
+      to: 'ordre@amento.no', // Admin e-post for bestillinger
       subject: `Ny bestilling - ${data.customerName}`,
       html: emailHtml,
     })
 
-    console.log('✅ Admin notifikasjon sendt til joachim@amento.no')
+    console.log('✅ Admin notifikasjon sendt til ordre@amento.no')
     console.log('📨 Resend response:', JSON.stringify(result, null, 2))
     return { success: true, data: result }
   } catch (error) {

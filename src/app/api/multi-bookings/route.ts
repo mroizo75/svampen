@@ -37,6 +37,8 @@ interface MultiBookingData {
   customerNotes?: string
   totalPrice: number
   totalDuration: number
+  isAdminBooking?: boolean
+  adminOverride?: boolean
 }
 
 export async function POST(request: NextRequest) {
@@ -227,48 +229,52 @@ export async function POST(request: NextRequest) {
     const estimatedEnd = new Date(bookingTime.getTime() + bookingData.totalDuration * 60000)
 
 
-    // Sjekk om tiden er tilgjengelig (basert på total varighet)
-    // Hent alle bookinger for samme dag (bruk samme dato-parsing som availability)
-    const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
-    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
-    
-    const existingBookings = await prisma.booking.findMany({
-      where: {
-        scheduledDate: {
-          gte: startOfDay,
-          lte: endOfDay,
+    // Sjekk om tiden er tilgjengelig (kun hvis IKKE admin override)
+    if (!bookingData.isAdminBooking || !bookingData.adminOverride) {
+      // Hent alle bookinger for samme dag (bruk samme dato-parsing som availability)
+      const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
+      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
+      
+      const existingBookings = await prisma.booking.findMany({
+        where: {
+          scheduledDate: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+          status: {
+            in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'],
+          },
         },
-        status: {
-          in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'],
+        select: {
+          id: true,
+          scheduledTime: true,
+          estimatedEnd: true,
         },
-      },
-      select: {
-        id: true,
-        scheduledTime: true,
-        estimatedEnd: true,
-      },
-    })
-    
-    
-    // Sjekk for overlapp
-    const conflictingBooking = existingBookings.find(booking => {
-      const bookingStart = new Date(booking.scheduledTime)
-      const bookingEnd = new Date(booking.estimatedEnd)
+      })
       
-      // Overlapp hvis: (bookingTime < bookingEnd) OG (estimatedEnd > bookingStart)
-      const overlaps = bookingTime < bookingEnd && estimatedEnd > bookingStart
       
-      if (overlaps) {
-      }
-      
-      return overlaps
-    })
+      // Sjekk for overlapp
+      const conflictingBooking = existingBookings.find(booking => {
+        const bookingStart = new Date(booking.scheduledTime)
+        const bookingEnd = new Date(booking.estimatedEnd)
+        
+        // Overlapp hvis: (bookingTime < bookingEnd) OG (estimatedEnd > bookingStart)
+        const overlaps = bookingTime < bookingEnd && estimatedEnd > bookingStart
+        
+        if (overlaps) {
+        }
+        
+        return overlaps
+      })
 
-    if (conflictingBooking) {
-      return NextResponse.json(
-        { message: 'Den valgte tiden er ikke lenger tilgjengelig. Vennligst oppdater siden og velg en annen tid.' },
-        { status: 409 }
-      )
+      if (conflictingBooking) {
+        return NextResponse.json(
+          { message: 'Den valgte tiden er ikke lenger tilgjengelig. Vennligst oppdater siden og velg en annen tid.' },
+          { status: 409 }
+        )
+      }
+    } else {
+      console.log('🔓 Admin override aktivert - hopper over tilgjengelighetssjekk for booking')
     }
     
 

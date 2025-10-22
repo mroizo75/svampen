@@ -104,9 +104,8 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
     console.log('🔵 Starting status change for booking:', bookingId, 'to:', newStatus)
     setUpdatingBookingId(bookingId)
     try {
-      // Legg til timeout på fetch
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 sekunder timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
 
       const response = await fetch(`/api/bookings/${bookingId}`, {
         method: 'PATCH',
@@ -126,10 +125,16 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
         throw new Error(error.message || 'Kunne ikke oppdatere status')
       }
 
-      console.log('✅ Status change successful, reloading page')
+      console.log('✅ Status change successful, refreshing...')
       
-      // Bruk window.location.reload() for å garantere at siden oppdateres
-      window.location.reload()
+      // Bruk router.refresh() og gi React tid til å oppdatere
+      await new Promise(resolve => setTimeout(resolve, 100))
+      router.refresh()
+      
+      // Reset state etter refresh
+      setTimeout(() => {
+        setUpdatingBookingId(null)
+      }, 500)
     } catch (error) {
       setUpdatingBookingId(null)
       if (error instanceof Error && error.name === 'AbortError') {
@@ -138,7 +143,6 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
         console.error('Error updating booking status:', error)
         alert(error instanceof Error ? error.message : 'Kunne ikke oppdatere status')
       }
-      throw error // Re-throw for proper error handling
     }
   }
 
@@ -150,7 +154,6 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
     try {
       setIsLoading(true)
       
-      // Gjør API-kallet
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 10000)
 
@@ -174,19 +177,16 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
       
       console.log('✅ API call successful, closing dialog')
       
-      // Lukk dialogen først
+      // Lukk dialogen og reset state
       setCancelDialogOpen(false)
       setSelectedBookingId(null)
       setIsLoading(false)
       
-      // Vent til dialogen er HELT lukket (animasjon tar ~200ms)
+      // Vent litt for å la dialogen lukke seg, deretter refresh
       await new Promise(resolve => setTimeout(resolve, 300))
       
-      console.log('✅ Dialog closed, reloading page')
-      
-      // Bruk window.location.reload() i stedet for router.refresh()
-      // Dette garanterer at siden lastes på nytt uten UI-problemer
-      window.location.reload()
+      console.log('✅ Dialog closed, refreshing...')
+      router.refresh()
       
     } catch (error) {
       console.error('Error cancelling booking:', error)

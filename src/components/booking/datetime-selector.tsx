@@ -16,6 +16,8 @@ interface DateTimeSelectorProps {
   totalDuration: number
   onDateChange: (date: Date) => void
   onTimeChange: (time: string) => void
+  isAdminBooking?: boolean
+  adminOverride?: boolean
 }
 
 export function DateTimeSelector({
@@ -24,6 +26,8 @@ export function DateTimeSelector({
   totalDuration,
   onDateChange,
   onTimeChange,
+  isAdminBooking = false,
+  adminOverride = false,
 }: DateTimeSelectorProps) {
   const [availableTimes, setAvailableTimes] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -34,10 +38,28 @@ export function DateTimeSelector({
     if (selectedDate && totalDuration > 0) {
       fetchAvailableTimes()
     }
-  }, [selectedDate, totalDuration])
+  }, [selectedDate, totalDuration, isAdminBooking, adminOverride])
 
   const fetchAvailableTimes = async () => {
     if (!selectedDate || totalDuration === 0) return
+
+    // Hvis admin override er aktivert, generer alle mulige tider
+    if (isAdminBooking && adminOverride) {
+      setLoading(true)
+      setSpecialMessage('🔓 Admin override aktivert - Alle tider er tilgjengelige')
+      
+      // Generer alle tider fra 08:00 til 16:00 hver 30. minutt
+      const times: string[] = []
+      for (let hour = 8; hour <= 15; hour++) {
+        times.push(`${hour.toString().padStart(2, '0')}:00`)
+        times.push(`${hour.toString().padStart(2, '0')}:30`)
+      }
+      times.push('16:00') // Legg til 16:00 også
+      
+      setAvailableTimes(times)
+      setLoading(false)
+      return
+    }
 
     setLoading(true)
     setSpecialMessage('')
