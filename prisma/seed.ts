@@ -35,7 +35,13 @@ async function main() {
     },
     {
       name: 'Innvendig rengjøring',
-      description: 'Komplett innvendig rengjøring.',
+      description: 'Komplett innvendig rengjøring av vanlig bil.',
+      duration: 60, // 1 time
+      category: ServiceCategory.MAIN,
+    },
+    {
+      name: 'Innvendig rengjøring stor bil',
+      description: 'Komplett innvendig rengjøring av SUV/stor bil.',
       duration: 60, // 1 time
       category: ServiceCategory.MAIN,
     },
@@ -131,20 +137,52 @@ async function main() {
     // Båt- og Bobiltjenester
     {
       name: 'Innv-/utvendig vask og polering (inntil 14 fot)',
-      description: 'Komplett innvendig og utvendig behandling av båt.',
+      description: 'Komplett innvendig og utvendig behandling av båt. Hel dag (8 timer).',
       duration: 480, // 8 timer (full dag)
       category: ServiceCategory.SPECIAL,
     },
     {
       name: 'Utvendig vask og polering (15-22 fot)',
-      description: 'Utvendig vask og polering av større båt.',
+      description: 'Utvendig vask og polering av større båt. Hel dag (8 timer).',
       duration: 480, // 8 timer (full dag)
       category: ServiceCategory.SPECIAL,
     },
     {
       name: 'Utv. vask Camping (opptil 6m)',
-      description: 'Utvendig vask av campingvogn eller bobil. Tillegg kr 250,- pr. ekstra påbegynt meter.',
+      description: 'Utvendig vask av campingvogn eller bobil. Hel dag (8 timer). Tillegg kr 250,- pr. ekstra påbegynt meter.',
       duration: 480, // 8 timer (full dag)
+      category: ServiceCategory.SPECIAL,
+    },
+    
+    // Bilforhandler-pakker (SPECIAL)
+    {
+      name: 'Alleen Auto - Eksklusiv pakke med motorv. og underspyling (Liten bil)',
+      description: 'Spesialpakke for Alleen Auto - Eksklusiv pakke med motorvask og underspyling.',
+      duration: 270, // 4t 30min
+      category: ServiceCategory.SPECIAL,
+    },
+    {
+      name: 'Alleen Auto - Eksklusiv pakke med motorv. og underspyling (Stor bil)',
+      description: 'Spesialpakke for Alleen Auto - Eksklusiv pakke med motorvask og underspyling.',
+      duration: 330, // 5t 30min
+      category: ServiceCategory.SPECIAL,
+    },
+    {
+      name: 'Kvavik Auto - Brukt bil, Eksklusiv pakken med motorvask og underspyling',
+      description: 'Spesialpakke for Kvavik Auto - Bruktbil behandling.',
+      duration: 270, // 4t 30min
+      category: ServiceCategory.SPECIAL,
+    },
+    {
+      name: 'Kvavik Auto - Ny bil eksklusiv pakken med motorvask',
+      description: 'Spesialpakke for Kvavik Auto - Nybil behandling.',
+      duration: 210, // 3t 30min
+      category: ServiceCategory.SPECIAL,
+    },
+    {
+      name: 'Kvavik Auto - Demo vask, medium pakke',
+      description: 'Spesialpakke for Kvavik Auto - Demobil behandling.',
+      duration: 60, // 1 time
       category: ServiceCategory.SPECIAL,
     },
   ]
@@ -210,7 +248,7 @@ async function main() {
     { serviceName: 'Utvendig-pakke', vehicleName: 'SUV/Caravelle/Kassebil/Minibuss', price: 1750 },
     
     { serviceName: 'Innvendig rengjøring', vehicleName: 'Vanlig bil/liten varebil', price: 750 },
-    { serviceName: 'Innvendig rengjøring', vehicleName: 'SUV/Caravelle/Kassebil/Minibuss', price: 890 },
+    { serviceName: 'Innvendig rengjøring stor bil', vehicleName: 'SUV/Caravelle/Kassebil/Minibuss', price: 890 },
     
     // Tilleggstjenester (ADDON)
     { serviceName: 'Seterens (1 enkelt sete)', vehicleName: 'Vanlig bil/liten varebil', price: 390 },
@@ -260,6 +298,13 @@ async function main() {
     { serviceName: 'Innv-/utvendig vask og polering (inntil 14 fot)', vehicleName: 'Båt (inntil 14 fot)', price: 2850 },
     { serviceName: 'Utvendig vask og polering (15-22 fot)', vehicleName: 'Båt (15-22 fot)', price: 3800 },
     { serviceName: 'Utv. vask Camping (opptil 6m)', vehicleName: 'Campingvogn/Bobil (opp til 6m)', price: 3990 },
+    
+    // Bilforhandler-pakker
+    { serviceName: 'Alleen Auto - Eksklusiv pakke med motorv. og underspyling (Liten bil)', vehicleName: 'Vanlig bil/liten varebil', price: 2487.50 },
+    { serviceName: 'Alleen Auto - Eksklusiv pakke med motorv. og underspyling (Stor bil)', vehicleName: 'SUV/Caravelle/Kassebil/Minibuss', price: 3612.50 },
+    { serviceName: 'Kvavik Auto - Brukt bil, Eksklusiv pakken med motorvask og underspyling', vehicleName: 'Vanlig bil/liten varebil', price: 2487.50 },
+    { serviceName: 'Kvavik Auto - Ny bil eksklusiv pakken med motorvask', vehicleName: 'Vanlig bil/liten varebil', price: 1862.50 },
+    { serviceName: 'Kvavik Auto - Demo vask, medium pakke', vehicleName: 'Vanlig bil/liten varebil', price: 700 },
   ]
 
   // Opprett service prices
@@ -353,11 +398,12 @@ async function main() {
 
   console.log('✅ Database seeding fullført!')
   console.log('')
-  console.log('📦 Opprettet tjenester (23 totalt):')
-  console.log('   🚗 Hovedpakker: Mini, Medium, Eksklusiv, Utvendig, Innvendig')
+  console.log('📦 Opprettet tjenester (29 totalt):')
+  console.log('   🚗 Hovedpakker: Mini, Medium, Eksklusiv, Utvendig, Innvendig (vanlig + stor bil)')
   console.log('   🧽 Tilleggstjenester: Sete/Tepperens, OZON, Motorvask, Underspyling, Henting/bringing')
   console.log('   ✨ Spesialtjenester: Lakkrens, Rubbing, Lyktepolering, Keramisk forsegling')
   console.log('   ⛵ Båt og Bobil: Båtvask (14-22 fot), Campingvask (6m)')
+  console.log('   🏢 Bilforhandler: Alleen Auto og Kvavik Auto spesialpakker')
   console.log('')
   console.log('🚙 Kjøretøytyper (5 totalt):')
   console.log('   - Vanlig bil/liten varebil')
