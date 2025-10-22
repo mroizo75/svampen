@@ -11,10 +11,15 @@ class RateLimiter {
   private ipAttempts = new Map<string, RateLimitEntry>()
   private emailAttempts = new Map<string, RateLimitEntry>()
   
-  // Konfigurering
-  private readonly MAX_ATTEMPTS = 5 // Maks 5 forsøk
+  // Konfigurering for email (strengt)
+  private readonly MAX_ATTEMPTS_EMAIL = 5 // Maks 5 forsøk per email
   private readonly WINDOW_MS = 15 * 60 * 1000 // 15 minutter
   private readonly BLOCK_DURATION_MS = 30 * 60 * 1000 // Blokker i 30 minutter
+  
+  // Konfigurering for IP (mer liberalt - kun mot store angrep)
+  private readonly MAX_ATTEMPTS_IP = 20 // Maks 20 forsøk per IP
+  private readonly WINDOW_MS_IP = 10 * 60 * 1000 // 10 minutter
+  private readonly BLOCK_DURATION_MS_IP = 15 * 60 * 1000 // Blokker i 15 minutter
   
   constructor() {
     // Cleanup gamle entries hver 10. minutt
@@ -39,7 +44,14 @@ class RateLimiter {
     }
   }
 
-  private checkLimit(map: Map<string, RateLimitEntry>, key: string): { 
+  private checkLimit(
+    map: Map<string, RateLimitEntry>, 
+    key: string, 
+    maxAttempts: number,
+    windowMs: number,
+    blockDurationMs: number,
+    type: 'email' | 'ip'
+  ): { 
     allowed: boolean
     remainingAttempts?: number
     blockedUntil?: Date
@@ -59,11 +71,11 @@ class RateLimiter {
     if (!entry || entry.resetAt < now) {
       map.set(key, {
         count: 1,
-        resetAt: now + this.WINDOW_MS
+        resetAt: now + windowMs
       })
       return {
         allowed: true,
-        remainingAttempts: this.MAX_ATTEMPTS - 1
+        remainingAttempts: maxAttempts - 1
       }
     }
 
@@ -71,9 +83,9 @@ class RateLimiter {
     entry.count++
 
     // Hvis grensen er nådd, blokker
-    if (entry.count > this.MAX_ATTEMPTS) {
-      entry.blockedUntil = now + this.BLOCK_DURATION_MS
-      console.warn(`🚨 Rate limit exceeded for ${key}. Blocked until ${new Date(entry.blockedUntil).toISOString()}`)
+    if (entry.count > maxAttempts) {
+      entry.blockedUntil = now + blockDurationMs
+      console.warn(`🚨 Rate limit exceeded for ${type}: ${key}. Blocked until ${new Date(entry.blockedUntil).toISOString()}`)
       return {
         allowed: false,
         blockedUntil: new Date(entry.blockedUntil)
@@ -82,16 +94,34 @@ class RateLimiter {
 
     return {
       allowed: true,
-      remainingAttempts: this.MAX_ATTEMPTS - entry.count
+      remainingAttempts: maxAttempts - entry.count
     }
   }
 
   checkIp(ip: string) {
-    return this.checkLimit(this.ipAttempts, ip)
+    // Ignorer 'unknown' IP for å unngå å blokkere alle
+    if (ip === 'unknown') {
+      return { allowed: true }
+    }
+    return this.checkLimit(
+      this.ipAttempts, 
+      ip, 
+      this.MAX_ATTEMPTS_IP, 
+      this.WINDOW_MS_IP, 
+      this.BLOCK_DURATION_MS_IP,
+      'ip'
+    )
   }
 
   checkEmail(email: string) {
-    return this.checkLimit(this.emailAttempts, email.toLowerCase())
+    return this.checkLimit(
+      this.emailAttempts, 
+      email.toLowerCase(), 
+      this.MAX_ATTEMPTS_EMAIL, 
+      this.WINDOW_MS, 
+      this.BLOCK_DURATION_MS,
+      'email'
+    )
   }
 
   // Reset etter vellykket innlogging
