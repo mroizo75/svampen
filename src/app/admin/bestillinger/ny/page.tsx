@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 import AdminBookingWizard from '@/components/admin/admin-booking-wizard'
 
 async function getBookingData() {
-  const [services, vehicleTypes] = await Promise.all([
+  const [services, vehicleTypes, settings] = await Promise.all([
     prisma.service.findMany({
       where: { isActive: true },
       include: {
@@ -16,6 +16,13 @@ async function getBookingData() {
     }),
     prisma.vehicleType.findMany({
       orderBy: { name: 'asc' },
+    }),
+    prisma.adminSettings.findMany({
+      where: {
+        key: {
+          in: ['business_hours_start', 'business_hours_end'],
+        },
+      },
     }),
   ])
 
@@ -28,11 +35,21 @@ async function getBookingData() {
     })),
   }))
 
-  return { services: serializedServices, vehicleTypes }
+  const settingsMap = settings.reduce((acc, setting) => {
+    acc[setting.key] = setting.value
+    return acc
+  }, {} as Record<string, string>)
+
+  return { 
+    services: serializedServices, 
+    vehicleTypes,
+    businessHoursStart: settingsMap.business_hours_start || '08:00',
+    businessHoursEnd: settingsMap.business_hours_end || '16:00',
+  }
 }
 
 export default async function NewBookingPage() {
-  const { services, vehicleTypes } = await getBookingData()
+  const { services, vehicleTypes, businessHoursStart, businessHoursEnd } = await getBookingData()
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -60,6 +77,8 @@ export default async function NewBookingPage() {
           <AdminBookingWizard 
             services={services} 
             vehicleTypes={vehicleTypes}
+            businessHoursStart={businessHoursStart}
+            businessHoursEnd={businessHoursEnd}
           />
         </CardContent>
       </Card>

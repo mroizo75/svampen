@@ -5,6 +5,27 @@ import { prisma } from '@/lib/prisma'
 // Returnerer max tilgjengelig tid for en gitt dato
 export async function GET(req: NextRequest) {
   try {
+    // Hent åpningstider fra admin settings
+    const settings = await prisma.adminSettings.findMany({
+      where: {
+        key: {
+          in: ['business_hours_start', 'business_hours_end'],
+        },
+      },
+    })
+    
+    const settingsMap = settings.reduce((acc, setting) => {
+      acc[setting.key] = setting.value
+      return acc
+    }, {} as Record<string, string>)
+    
+    const businessHoursStart = settingsMap.business_hours_start || '08:00'
+    const businessHoursEnd = settingsMap.business_hours_end || '16:00'
+    
+    // Parse åpningstider
+    const [startHour, startMinute] = businessHoursStart.split(':').map(Number)
+    const [endHour, endMinute] = businessHoursEnd.split(':').map(Number)
+    
     const searchParams = req.nextUrl.searchParams
     const dateParam = searchParams.get('date')
 
@@ -45,10 +66,10 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    // Arbeidstid
-    const workStart = 8 * 60 // 08:00 i minutter
-    const workEnd = 16 * 60 // 16:00 i minutter
-    const totalWorkMinutes = workEnd - workStart // 480 minutter (8 timer)
+    // Arbeidstid fra settings
+    const workStart = startHour * 60 + startMinute // Start i minutter
+    const workEnd = endHour * 60 + endMinute // Slutt i minutter
+    const totalWorkMinutes = workEnd - workStart // Total arbeidstid i minutter
 
     if (existingBookings.length === 0) {
       // Ingen bookinger - full dag tilgjengelig
@@ -58,8 +79,8 @@ export async function GET(req: NextRequest) {
         maxAvailableMinutes: totalWorkMinutes,
         availableSlots: [
           {
-            start: '08:00',
-            end: '16:00',
+            start: businessHoursStart,
+            end: businessHoursEnd,
             durationMinutes: totalWorkMinutes,
           },
         ],
@@ -109,7 +130,7 @@ export async function GET(req: NextRequest) {
       const duration = workEnd - currentTime
       availableSlots.push({
         start: `${String(Math.floor(currentTime / 60)).padStart(2, '0')}:${String(currentTime % 60).padStart(2, '0')}`,
-        end: '16:00',
+        end: businessHoursEnd,
         durationMinutes: duration,
       })
     }

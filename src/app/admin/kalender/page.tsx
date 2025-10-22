@@ -50,8 +50,39 @@ async function getBookings() {
   }
 }
 
+async function getBusinessHours() {
+  try {
+    const settings = await prisma.adminSettings.findMany({
+      where: {
+        key: {
+          in: ['business_hours_start', 'business_hours_end'],
+        },
+      },
+    })
+    
+    const settingsMap = settings.reduce((acc, setting) => {
+      acc[setting.key] = setting.value
+      return acc
+    }, {} as Record<string, string>)
+    
+    return {
+      start: settingsMap.business_hours_start || '08:00',
+      end: settingsMap.business_hours_end || '16:00',
+    }
+  } catch (error) {
+    console.error('Error fetching business hours:', error)
+    return {
+      start: '08:00',
+      end: '16:00',
+    }
+  }
+}
+
 export default async function AdminCalendarPage() {
-  const bookings = await getBookings()
+  const [bookings, businessHours] = await Promise.all([
+    getBookings(),
+    getBusinessHours(),
+  ])
 
   return (
     <div className="space-y-6">
@@ -60,7 +91,11 @@ export default async function AdminCalendarPage() {
         <p className="text-gray-600">Oversikt over alle bookinger</p>
       </div>
 
-      <CalendarView bookings={bookings} />
+      <CalendarView 
+        bookings={bookings} 
+        businessHoursStart={businessHours.start}
+        businessHoursEnd={businessHours.end}
+      />
     </div>
   )
 }

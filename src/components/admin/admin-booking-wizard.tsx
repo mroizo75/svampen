@@ -13,9 +13,16 @@ import { MultiBookingWizard } from '@/components/booking/multi-booking-wizard'
 interface AdminBookingWizardProps {
   services: any[]
   vehicleTypes: any[]
+  businessHoursStart?: string
+  businessHoursEnd?: string
 }
 
-export default function AdminBookingWizard({ services, vehicleTypes }: AdminBookingWizardProps) {
+export default function AdminBookingWizard({ 
+  services, 
+  vehicleTypes, 
+  businessHoursStart = '08:00',
+  businessHoursEnd = '16:00' 
+}: AdminBookingWizardProps) {
   const router = useRouter()
   const [step, setStep] = useState<'customer' | 'booking'>('customer')
   const [isLoading, setIsLoading] = useState(false)
@@ -83,6 +90,8 @@ export default function AdminBookingWizard({ services, vehicleTypes }: AdminBook
           vehicleTypes={vehicleTypes}
           isAdminBooking={true}
           prefilledCustomerInfo={customerInfo}
+          businessHoursStart={businessHoursStart}
+          businessHoursEnd={businessHoursEnd}
         />
       </div>
     )

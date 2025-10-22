@@ -18,6 +18,8 @@ interface DateTimeSelectorProps {
   onTimeChange: (time: string) => void
   isAdminBooking?: boolean
   adminOverride?: boolean
+  businessHoursStart?: string
+  businessHoursEnd?: string
 }
 
 export function DateTimeSelector({
@@ -28,6 +30,8 @@ export function DateTimeSelector({
   onTimeChange,
   isAdminBooking = false,
   adminOverride = false,
+  businessHoursStart = '08:00',
+  businessHoursEnd = '16:00',
 }: DateTimeSelectorProps) {
   const [availableTimes, setAvailableTimes] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -48,13 +52,25 @@ export function DateTimeSelector({
       setLoading(true)
       setSpecialMessage('🔓 Admin override aktivert - Alle tider er tilgjengelige')
       
-      // Generer alle tider fra 08:00 til 16:00 hver 30. minutt
+      // Parse åpningstider
+      const [startHour, startMinute] = businessHoursStart.split(':').map(Number)
+      const [endHour, endMinute] = businessHoursEnd.split(':').map(Number)
+      
+      // Generer alle tider fra start til slutt hver 30. minutt
       const times: string[] = []
-      for (let hour = 8; hour <= 15; hour++) {
-        times.push(`${hour.toString().padStart(2, '0')}:00`)
-        times.push(`${hour.toString().padStart(2, '0')}:30`)
+      let currentHour = startHour
+      let currentMinute = startMinute
+      
+      while (currentHour < endHour || (currentHour === endHour && currentMinute <= endMinute)) {
+        times.push(`${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`)
+        
+        // Øk med 30 minutter
+        currentMinute += 30
+        if (currentMinute >= 60) {
+          currentMinute = 0
+          currentHour += 1
+        }
       }
-      times.push('16:00') // Legg til 16:00 også
       
       setAvailableTimes(times)
       setLoading(false)

@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
+  // Hent åpningstider fra admin settings
+  const settings = await prisma.adminSettings.findMany({
+    where: {
+      key: {
+        in: ['business_hours_start', 'business_hours_end'],
+      },
+    },
+  })
+  
+  const settingsMap = settings.reduce((acc, setting) => {
+    acc[setting.key] = setting.value
+    return acc
+  }, {} as Record<string, string>)
+  
+  const businessHoursStart = settingsMap.business_hours_start || '08:00'
+  const businessHoursEnd = settingsMap.business_hours_end || '16:00'
+  
   try {
     const { searchParams } = new URL(request.url)
     const date = searchParams.get('date')
@@ -76,15 +93,18 @@ export async function GET(request: NextRequest) {
     // Generer liste over ledige tider
     const availableTimes: string[] = []
     
-    // Standard arbeidstider hvis ingen slots er definert
-    const defaultStartHour = 8
-    let defaultEndHour = 16
+    // Parse åpningstider fra settings
+    const [startHour, startMinute] = businessHoursStart.split(':').map(Number)
+    const [endHour, endMinute] = businessHoursEnd.split(':').map(Number)
     
-    // For spesielt lange tjenester (over 6 timer), utvid arbeidstiden
+    const defaultStartHour = startHour
+    let defaultEndHour = endHour
+    
+    // For spesielt lange tjenester (over 6 timer), utvid arbeidstiden med 2 timer
     const durationHours = duration / 60
     if (durationHours > 6) {
-      defaultEndHour = 18 // Utvid til kl. 18:00 for lange tjenester
-      console.log(`[Availability] Long service detected (${durationHours.toFixed(1)}h), extending working hours to 18:00`)
+      defaultEndHour = Math.min(endHour + 2, 20) // Utvid maks til kl. 20:00
+      console.log(`[Availability] Long service detected (${durationHours.toFixed(1)}h), extending working hours to ${defaultEndHour}:00`)
     }
     
     // Hvis tjenesten fortsatt er for lang, gi beskjed

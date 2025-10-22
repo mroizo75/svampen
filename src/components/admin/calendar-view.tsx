@@ -55,13 +55,27 @@ interface CalendarEvent extends Event {
 
 interface CalendarViewProps {
   bookings: Booking[]
+  businessHoursStart?: string
+  businessHoursEnd?: string
 }
 
-export default function CalendarView({ bookings }: CalendarViewProps) {
+export default function CalendarView({ 
+  bookings, 
+  businessHoursStart = '08:00',
+  businessHoursEnd = '16:00' 
+}: CalendarViewProps) {
   const router = useRouter()
   const [view, setView] = useState<'month' | 'week' | 'day'>('month')
   const [quickBookingOpen, setQuickBookingOpen] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<{ date: Date; time?: Date } | null>(null)
+
+  // Parse åpningstider
+  const [startHour, startMinute] = businessHoursStart.split(':').map(Number)
+  const [endHour, endMinute] = businessHoursEnd.split(':').map(Number)
+  
+  // Kalender min/max tider (utvid litt for bedre visning)
+  const calendarMinTime = new Date(2025, 0, 1, Math.max(0, startHour - 1), 0)
+  const calendarMaxTime = new Date(2025, 0, 1, Math.min(23, endHour + 1), 0)
 
   // Konverter bookinger til kalender-events
   const events: CalendarEvent[] = bookings.map(booking => {
@@ -228,8 +242,8 @@ export default function CalendarView({ bookings }: CalendarViewProps) {
             selectable
             step={30}
             timeslots={2}
-            min={new Date(2025, 0, 1, 7, 0)} // Start kl 07:00
-            max={new Date(2025, 0, 1, 19, 0)} // Slutt kl 19:00
+            min={calendarMinTime}
+            max={calendarMaxTime}
           />
         </div>
       </Card>

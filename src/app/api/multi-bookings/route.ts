@@ -39,6 +39,7 @@ interface MultiBookingData {
   totalDuration: number
   isAdminBooking?: boolean
   adminOverride?: boolean
+  sendSms?: boolean
 }
 
 export async function POST(request: NextRequest) {
@@ -360,18 +361,36 @@ export async function POST(request: NextRequest) {
         console.error('Failed to send admin notification email:', adminEmailResult.error)
       }
 
-      // Send SMS bekreftelse til kunde (hvis telefonnummer er oppgitt)
-      if (bookingData.customerInfo.phone) {
-        const smsResult = await sendBookingConfirmationSMS({
-          customerName: emailData.customerName,
-          customerPhone: bookingData.customerInfo.phone,
-          scheduledDate: bookingData.scheduledDate,
-          scheduledTime: bookingData.scheduledTime,
-          bookingId: booking.id,
-        })
-        if (!smsResult.success) {
-          console.error('Failed to send confirmation SMS:', smsResult.error)
+      // Send SMS bekreftelse til kunde (hvis telefonnummer er oppgitt og det er et mobilnummer)
+      // For admin-bookinger: respekter sendSms flagget
+      // For kunde-bookinger: send alltid (default)
+      const shouldSendSms = bookingData.isAdminBooking 
+        ? bookingData.sendSms === true 
+        : true // Default true for kunde-bookinger
+      
+      if (shouldSendSms && bookingData.customerInfo.phone) {
+        // Sjekk om det er et norsk mobilnummer (starter med 4 eller 9, og er 8 siffer)
+        const phoneDigits = bookingData.customerInfo.phone.replace(/\s/g, '')
+        const isMobileNumber = /^[49]\d{7}$/.test(phoneDigits)
+        
+        if (isMobileNumber) {
+          const smsResult = await sendBookingConfirmationSMS({
+            customerName: emailData.customerName,
+            customerPhone: bookingData.customerInfo.phone,
+            scheduledDate: bookingData.scheduledDate,
+            scheduledTime: bookingData.scheduledTime,
+            bookingId: booking.id,
+          })
+          if (!smsResult.success) {
+            console.error('Failed to send confirmation SMS:', smsResult.error)
+          } else {
+            console.log(`✅ SMS confirmation sent to mobile number: ${bookingData.customerInfo.phone}`)
+          }
+        } else {
+          console.log(`ℹ️ Skipping SMS - not a mobile number: ${bookingData.customerInfo.phone}`)
         }
+      } else if (bookingData.isAdminBooking && !bookingData.sendSms) {
+        console.log('ℹ️ SMS skipped - admin chose not to send SMS')
       }
     } catch (emailError) {
       // Vi logger feilen, men lar ikke e-post feil stoppe booking prosessen

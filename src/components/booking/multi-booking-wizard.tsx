@@ -21,7 +21,8 @@ import {
   ArrowRight,
   Users,
   AlertTriangle,
-  Shield
+  Shield,
+  Info
 } from 'lucide-react'
 import { VehicleSelector } from './vehicle-selector'
 import { ServiceSelector } from './service-selector'
@@ -95,6 +96,8 @@ interface MultiBookingWizardProps {
     lastName: string
     phone?: string
   }
+  businessHoursStart?: string
+  businessHoursEnd?: string
 }
 
 export function MultiBookingWizard({ 
@@ -102,7 +105,9 @@ export function MultiBookingWizard({
   vehicleTypes, 
   user,
   isAdminBooking = false,
-  prefilledCustomerInfo
+  prefilledCustomerInfo,
+  businessHoursStart = '08:00',
+  businessHoursEnd = '16:00'
 }: MultiBookingWizardProps) {
   const router = useRouter()
   const { data: session } = useSession()
@@ -134,6 +139,7 @@ export function MultiBookingWizard({
   const [error, setError] = useState('')
   const [maxAvailableMinutes, setMaxAvailableMinutes] = useState<number | null>(null)
   const [adminOverride, setAdminOverride] = useState(false)
+  const [sendSms, setSendSms] = useState(true) // Default til å sende SMS
 
   const calculateTotals = useCallback(() => {
     let totalPrice = 0
@@ -329,6 +335,7 @@ export function MultiBookingWizard({
           : bookingData.scheduledDate,
         isAdminBooking,
         adminOverride,
+        sendSms: isAdminBooking ? sendSms : undefined, // Kun send flagget for admin-bookinger
       }
 
       const response = await fetch('/api/multi-bookings', {
@@ -540,13 +547,49 @@ export function MultiBookingWizard({
 
           {/* Step 2: Customer Info */}
           {currentStep === 2 && (
-            <CustomerInfoStep
-              customerInfo={bookingData.customerInfo}
-              onCustomerInfoChange={(customerInfo) => 
-                setBookingData(prev => ({ ...prev, customerInfo }))
-              }
-              isAdminBooking={isAdminBooking}
-            />
+            <>
+              <CustomerInfoStep
+                customerInfo={bookingData.customerInfo}
+                onCustomerInfoChange={(customerInfo) => 
+                  setBookingData(prev => ({ ...prev, customerInfo }))
+                }
+                isAdminBooking={isAdminBooking}
+              />
+              
+              {/* SMS-valg for admin */}
+              {isAdminBooking && (
+                <Alert className="mt-6 bg-blue-50 border-blue-200">
+                  <Info className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-900">
+                    <div className="flex items-start space-x-3">
+                      <input
+                        type="checkbox"
+                        id="sendSms"
+                        checked={sendSms}
+                        onChange={(e) => setSendSms(e.target.checked)}
+                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div className="flex-1">
+                        <label htmlFor="sendSms" className="cursor-pointer font-medium">
+                          Send SMS-bekreftelse til kunde
+                        </label>
+                        <p className="text-sm text-blue-700 mt-1">
+                          SMS sendes kun til mobilnummer (starter med 4 eller 9). 
+                          {bookingData.customerInfo.phone && (
+                            <>
+                              {' '}Telefonnummer: <strong>{bookingData.customerInfo.phone}</strong>
+                              {!/^[49]\d{7}$/.test(bookingData.customerInfo.phone.replace(/\s/g, '')) && (
+                                <span className="text-orange-600"> (ikke et mobilnummer)</span>
+                              )}
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </>
           )}
 
           {/* Step 3: Date & Time */}
@@ -603,6 +646,8 @@ export function MultiBookingWizard({
                 }
                 isAdminBooking={isAdminBooking}
                 adminOverride={adminOverride}
+                businessHoursStart={businessHoursStart}
+                businessHoursEnd={businessHoursEnd}
               />
             </>
           )}
