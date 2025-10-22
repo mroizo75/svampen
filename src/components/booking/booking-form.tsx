@@ -81,7 +81,13 @@ export function BookingForm({ services, vehicleTypes, user }: BookingFormProps) 
     if (!selectedDate || !selectedService) return
 
     try {
-      const response = await fetch(`/api/availability?date=${selectedDate.toISOString().split('T')[0]}&duration=${selectedService.duration}`)
+      // Konverter Date til lokal dato-string uten timezone-konvertering
+      const year = selectedDate.getFullYear()
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
+      const day = String(selectedDate.getDate()).padStart(2, '0')
+      const dateStr = `${year}-${month}-${day}`
+      
+      const response = await fetch(`/api/availability?date=${dateStr}&duration=${selectedService.duration}`)
       const data = await response.json()
       setAvailableTimes(data.availableTimes || [])
     } catch (error) {
@@ -103,6 +109,14 @@ export function BookingForm({ services, vehicleTypes, user }: BookingFormProps) 
     }
 
     try {
+      // Konverter Date til lokal dato-string (YYYY-MM-DD) uten timezone-konvertering
+      const formatLocalDate = (date: Date): string => {
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+      }
+
       const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: {
@@ -111,7 +125,7 @@ export function BookingForm({ services, vehicleTypes, user }: BookingFormProps) 
         body: JSON.stringify({
           serviceId: selectedService.id,
           vehicleTypeId: selectedVehicleType.id,
-          scheduledDate: selectedDate.toISOString().split('T')[0],
+          scheduledDate: formatLocalDate(selectedDate),
           scheduledTime: selectedTime,
           vehicleInfo,
           customerNotes,

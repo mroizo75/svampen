@@ -64,8 +64,14 @@ export function DateTimeSelector({
     setLoading(true)
     setSpecialMessage('')
     try {
+      // Konverter Date til lokal dato-string uten timezone-konvertering
+      const year = selectedDate.getFullYear()
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
+      const day = String(selectedDate.getDate()).padStart(2, '0')
+      const dateStr = `${year}-${month}-${day}`
+      
       const response = await fetch(
-        `/api/availability?date=${selectedDate.toISOString().split('T')[0]}&duration=${totalDuration}`
+        `/api/availability?date=${dateStr}&duration=${totalDuration}`
       )
       const data = await response.json()
       setAvailableTimes(data.availableTimes || [])

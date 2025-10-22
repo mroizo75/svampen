@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -55,10 +55,32 @@ export function ServiceSelector({
 }: ServiceSelectorProps) {
   const [selectedCategory, setSelectedCategory] = useState<'MAIN' | 'ADDON' | 'SPECIAL'>('MAIN')
 
-  // Filtrer tjenester etter kategori
-  const mainServices = services.filter(s => s.category === 'MAIN')
-  const addonServices = services.filter(s => s.category === 'ADDON')
-  const specialServices = services.filter(s => s.category === 'SPECIAL')
+  // Filtrer tjenester etter kategori OG om de har pris for valgt kjøretøy
+  const hasValidPrice = (service: Service) => {
+    const priceInfo = service.servicePrices.find(sp => sp.vehicleTypeId === vehicleTypeId)
+    return priceInfo && Number(priceInfo.price) > 0
+  }
+
+  const mainServices = services.filter(s => s.category === 'MAIN' && hasValidPrice(s))
+  const addonServices = services.filter(s => s.category === 'ADDON' && hasValidPrice(s))
+  const specialServices = services.filter(s => s.category === 'SPECIAL' && hasValidPrice(s))
+
+  const categories = [
+    { key: 'MAIN', label: 'Hovedpakker', services: mainServices },
+    { key: 'ADDON', label: 'Tilleggstjenester', services: addonServices },
+    { key: 'SPECIAL', label: 'Spesialtjenester', services: specialServices },
+  ]
+
+  // Auto-velg første tilgjengelige kategori hvis valgt kategori er tom
+  useEffect(() => {
+    const currentCategory = categories.find(c => c.key === selectedCategory)
+    if (currentCategory && currentCategory.services.length === 0) {
+      const firstAvailable = categories.find(c => c.services.length > 0)
+      if (firstAvailable) {
+        setSelectedCategory(firstAvailable.key as any)
+      }
+    }
+  }, [vehicleTypeId, selectedCategory])
 
   const getServicePrice = (service: Service) => {
     const priceInfo = service.servicePrices.find(sp => sp.vehicleTypeId === vehicleTypeId)
@@ -116,12 +138,6 @@ export function ServiceSelector({
       default: return Car
     }
   }
-
-  const categories = [
-    { key: 'MAIN', label: 'Hovedpakker', services: mainServices },
-    { key: 'ADDON', label: 'Tilleggstjenester', services: addonServices },
-    { key: 'SPECIAL', label: 'Spesialtjenester', services: specialServices },
-  ]
 
   return (
     <div className="space-y-6">
@@ -189,27 +205,29 @@ export function ServiceSelector({
 
       {/* Kategori faner */}
       <div className="flex space-x-2 border-b">
-        {categories.map((category) => {
-          const IconComponent = getCategoryIcon(category.key)
-          return (
-            <button
-              key={category.key}
-              onClick={() => setSelectedCategory(category.key as any)}
-              className={cn(
-                'flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors',
-                selectedCategory === category.key
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              )}
-            >
-              <IconComponent className="mr-2 h-4 w-4" />
-              {category.label}
-              <Badge variant="secondary" className="ml-2">
-                {category.services.length}
-              </Badge>
-            </button>
-          )
-        })}
+        {categories
+          .filter(category => category.services.length > 0) // Skjul tomme kategorier
+          .map((category) => {
+            const IconComponent = getCategoryIcon(category.key)
+            return (
+              <button
+                key={category.key}
+                onClick={() => setSelectedCategory(category.key as any)}
+                className={cn(
+                  'flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+                  selectedCategory === category.key
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                )}
+              >
+                <IconComponent className="mr-2 h-4 w-4" />
+                {category.label}
+                <Badge variant="secondary" className="ml-2">
+                  {category.services.length}
+                </Badge>
+              </button>
+            )
+          })}
       </div>
 
       {/* Tjeneste liste */}

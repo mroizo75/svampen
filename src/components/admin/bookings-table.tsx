@@ -125,16 +125,13 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
         throw new Error(error.message || 'Kunne ikke oppdatere status')
       }
 
-      console.log('✅ Status change successful, refreshing...')
+      console.log('✅ Status change successful, reloading page...')
       
-      // Bruk router.refresh() og gi React tid til å oppdatere
-      await new Promise(resolve => setTimeout(resolve, 100))
-      router.refresh()
+      // Vent litt for å la API-responsen bli behandlet
+      await new Promise(resolve => setTimeout(resolve, 200))
       
-      // Reset state etter refresh
-      setTimeout(() => {
-        setUpdatingBookingId(null)
-      }, 500)
+      // Full page reload er den eneste pålitelige måten å oppdatere server components
+      window.location.reload()
     } catch (error) {
       setUpdatingBookingId(null)
       if (error instanceof Error && error.name === 'AbortError') {
@@ -177,16 +174,18 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
       
       console.log('✅ API call successful, closing dialog')
       
-      // Lukk dialogen og reset state
+      // Lukk dialogen først
       setCancelDialogOpen(false)
       setSelectedBookingId(null)
       setIsLoading(false)
       
-      // Vent litt for å la dialogen lukke seg, deretter refresh
+      // Vent litt for å la dialogen lukke seg, deretter reload
       await new Promise(resolve => setTimeout(resolve, 300))
       
-      console.log('✅ Dialog closed, refreshing...')
-      router.refresh()
+      console.log('✅ Dialog closed, reloading page...')
+      
+      // Full page reload er den eneste pålitelige måten å oppdatere server components
+      window.location.reload()
       
     } catch (error) {
       console.error('Error cancelling booking:', error)

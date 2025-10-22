@@ -181,17 +181,40 @@ export function MultiBookingWizard({
     if (isAdminBooking) {
       const quickBookingDate = sessionStorage.getItem('quickBookingDate')
       const quickBookingTime = sessionStorage.getItem('quickBookingTime')
+      const quickBookingCustomer = sessionStorage.getItem('quickBookingCustomer')
       
-      if (quickBookingDate || quickBookingTime) {
-        setBookingData(prev => ({
-          ...prev,
-          scheduledDate: quickBookingDate ? new Date(quickBookingDate) : prev.scheduledDate,
-          scheduledTime: quickBookingTime || prev.scheduledTime,
-        }))
+      if (quickBookingDate || quickBookingTime || quickBookingCustomer) {
+        setBookingData(prev => {
+          const updates: any = {}
+          
+          if (quickBookingDate) {
+            updates.scheduledDate = new Date(quickBookingDate)
+          }
+          if (quickBookingTime) {
+            updates.scheduledTime = quickBookingTime
+          }
+          if (quickBookingCustomer) {
+            try {
+              const customerData = JSON.parse(quickBookingCustomer)
+              updates.customerInfo = {
+                ...prev.customerInfo,
+                firstName: customerData.firstName || prev.customerInfo.firstName,
+                lastName: customerData.lastName || prev.customerInfo.lastName,
+                email: customerData.email || prev.customerInfo.email,
+                phone: customerData.phone || prev.customerInfo.phone,
+              }
+            } catch (e) {
+              console.error('Error parsing quickBookingCustomer:', e)
+            }
+          }
+          
+          return { ...prev, ...updates }
+        })
         
         // Rydd opp sessionStorage
         sessionStorage.removeItem('quickBookingDate')
         sessionStorage.removeItem('quickBookingTime')
+        sessionStorage.removeItem('quickBookingCustomer')
       }
     }
   }, [isAdminBooking])
@@ -201,9 +224,16 @@ export function MultiBookingWizard({
     const checkAvailability = async () => {
       if (isAdminBooking && bookingData.scheduledDate && !adminOverride) {
         try {
-          const dateStr = bookingData.scheduledDate instanceof Date 
-            ? bookingData.scheduledDate.toISOString().split('T')[0]
-            : bookingData.scheduledDate
+          // Konverter Date til lokal dato-string uten timezone-konvertering
+          let dateStr: string
+          if (bookingData.scheduledDate instanceof Date) {
+            const year = bookingData.scheduledDate.getFullYear()
+            const month = String(bookingData.scheduledDate.getMonth() + 1).padStart(2, '0')
+            const day = String(bookingData.scheduledDate.getDate()).padStart(2, '0')
+            dateStr = `${year}-${month}-${day}`
+          } else {
+            dateStr = bookingData.scheduledDate
+          }
 
           const response = await fetch(`/api/availability/check?date=${dateStr}`)
           const data = await response.json()
@@ -284,11 +314,18 @@ export function MultiBookingWizard({
     setError('')
 
     try {
-      // Konverter Date til ISO string før sending
+      // Konverter Date til lokal dato-string (YYYY-MM-DD) uten timezone-konvertering
+      const formatLocalDate = (date: Date): string => {
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+      }
+
       const submissionData = {
         ...bookingData,
         scheduledDate: bookingData.scheduledDate instanceof Date 
-          ? bookingData.scheduledDate.toISOString().split('T')[0]
+          ? formatLocalDate(bookingData.scheduledDate)
           : bookingData.scheduledDate,
         isAdminBooking,
         adminOverride,

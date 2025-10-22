@@ -144,7 +144,9 @@ export default async function AdminTimePlanPage() {
           </Card>
         ) : (
           Object.keys(slotsByDate).map((dateKey) => {
-            const date = new Date(dateKey)
+            // Parse dato fra YYYY-MM-DD format til lokal tid (unngå UTC konvertering)
+            const [year, month, day] = dateKey.split('-').map(Number)
+            const date = new Date(year, month - 1, day)
             const slots = slotsByDate[dateKey]
             const availableCount = slots.filter(s => s.isAvailable && !s.isHoliday).length
             const unavailableCount = slots.filter(s => !s.isAvailable || s.isHoliday).length
