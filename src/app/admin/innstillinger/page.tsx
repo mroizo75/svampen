@@ -103,10 +103,20 @@ export default async function AdminSettingsPage() {
               <p className="text-sm text-gray-600">
                 Trenger du hjelp med systemet?
               </p>
-              <Button variant="outline" size="sm" className="w-full">
-                <Mail className="mr-2 h-4 w-4" />
-                Kontakt support
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full" 
+                asChild
+              >
+                <a href="mailto:kenneth@kksas.no?subject=Support%20-%20Svampen%20Booking%20System">
+                  <Mail className="mr-2 h-4 w-4" />
+                  Kontakt support
+                </a>
               </Button>
+              <p className="text-xs text-gray-500 text-center mt-2">
+                kenneth@kksas.no
+              </p>
             </CardContent>
           </Card>
         </div>

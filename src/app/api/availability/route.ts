@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
-  // Hent åpningstider fra admin settings
+  // Hent åpningstider og minimum forhåndsbestilling fra admin settings
   const settings = await prisma.adminSettings.findMany({
     where: {
       key: {
-        in: ['business_hours_start', 'business_hours_end'],
+        in: ['business_hours_start', 'business_hours_end', 'min_advance_booking_hours'],
       },
     },
   })
@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
   
   const businessHoursStart = settingsMap.business_hours_start || '08:00'
   const businessHoursEnd = settingsMap.business_hours_end || '16:00'
+  const minAdvanceHours = parseInt(settingsMap.min_advance_booking_hours || '24')
   
   try {
     const { searchParams } = new URL(request.url)
@@ -42,6 +43,11 @@ export async function GET(request: NextRequest) {
     if (selectedDate < today) {
       return NextResponse.json({ availableTimes: [] })
     }
+
+    // Beregn minimum booking tid basert på innstillinger
+    const now = new Date()
+    const minimumBookingTime = new Date(now.getTime() + (minAdvanceHours * 60 * 60 * 1000))
+    console.log(`[Availability] Minimum advance booking: ${minAdvanceHours} hours (from ${now.toLocaleString('nb-NO')} to ${minimumBookingTime.toLocaleString('nb-NO')})`)
 
     // Hent eksisterende bestillinger for datoen (alle aktive bookinger)
     const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
@@ -171,6 +177,12 @@ export async function GET(request: NextRequest) {
             continue
           }
           
+          // Sjekk minimum forhåndsbestilling
+          if (proposedStart < minimumBookingTime) {
+            console.log(`  [Skip] ${timeString} - too soon (minimum ${minAdvanceHours}h advance required)`)
+            continue
+          }
+          
           // Sjekk om tiden er tilgjengelig
           const available = isTimeSlotAvailable(proposedStart, proposedEnd)
           if (available) {
@@ -184,6 +196,12 @@ export async function GET(request: NextRequest) {
       timeSlots.forEach(slot => {
         const startTime = new Date(slot.startTime)
         const timeString = `${startTime.getHours().toString().padStart(2, '0')}:${startTime.getMinutes().toString().padStart(2, '0')}`
+        
+        // Sjekk minimum forhåndsbestilling
+        if (startTime < minimumBookingTime) {
+          console.log(`  [Skip] ${timeString} - too soon (minimum ${minAdvanceHours}h advance required)`)
+          return
+        }
         
         // Beregn sluttid basert på varighet
         const endTime = new Date(startTime.getTime() + duration * 60000)
