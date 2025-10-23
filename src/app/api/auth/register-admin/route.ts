@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { UserRole } from '@prisma/client'
+import * as rateLimiter from '@/lib/rate-limiter'
 
 /**
  * Sikker admin-registrering endpoint
  * Krever ADMIN_REGISTRATION_SECRET i .env
+ * Rate limiting: Maks 3 forsøk per 15 min per IP
  * 
  * POST /api/auth/register-admin
  * Body: {
@@ -19,6 +21,27 @@ import { UserRole } from '@prisma/client'
  */
 export async function POST(req: NextRequest) {
   try {
+    // Rate limiting - veldig strengt for admin-registrering
+    const ip = req.headers.get('x-forwarded-for') || 
+               req.headers.get('x-real-ip') || 
+               'unknown'
+    
+    const rateLimitKey = `admin-reg:${ip}`
+    const isAllowed = rateLimiter.rateLimiter.checkCustomLimit(
+      rateLimitKey, 
+      3, // Maks 3 forsøk
+      15 * 60 * 1000, // 15 minutter window
+      30 * 60 * 1000  // Blokker i 30 minutter
+    )
+    
+    if (!isAllowed) {
+      console.warn(`🚨 Admin registration rate limit exceeded for IP: ${ip}`)
+      return NextResponse.json(
+        { message: 'For mange forsøk. Prøv igjen om 15 minutter.' },
+        { status: 429 }
+      )
+    }
+
     const { firstName, lastName, email, phone, password, adminSecret } = await req.json()
 
     // Validering

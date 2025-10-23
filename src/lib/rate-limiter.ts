@@ -136,6 +136,24 @@ class RateLimiter {
       emailAttempts: this.emailAttempts.size
     }
   }
+
+  // Generisk rate limit sjekk for custom scenarios
+  checkCustomLimit(
+    key: string, 
+    maxAttempts: number, 
+    windowMs: number, 
+    blockDurationMs: number = windowMs * 2
+  ): boolean {
+    const result = this.checkLimit(
+      this.ipAttempts, // Bruk IP map for custom limits
+      key,
+      maxAttempts,
+      windowMs,
+      blockDurationMs,
+      'ip'
+    )
+    return result.allowed
+  }
 }
 
 // Singleton instance

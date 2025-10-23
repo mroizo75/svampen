@@ -28,6 +28,8 @@ import {
   BarChart3
 } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
+import { AddVehicleTypeDialog } from '@/components/admin/add-vehicle-type-dialog'
+import { AddServiceDialog } from '@/components/admin/add-service-dialog'
 
 async function getServices() {
   try {
@@ -127,14 +129,8 @@ export default async function AdminServicesPage() {
           <p className="text-gray-600">Administrer tjenester, priser og kjøretøy typer</p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline">
-            <Plus className="mr-2 h-4 w-4" />
-            Ny kjøretøy type
-          </Button>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Ny tjeneste
-          </Button>
+          <AddVehicleTypeDialog />
+          <AddServiceDialog vehicleTypes={vehicleTypes} />
         </div>
       </div>
 
@@ -321,10 +317,7 @@ export default async function AdminServicesPage() {
               <CardTitle>Kjøretøy typer</CardTitle>
               <CardDescription>Administrer støttede kjøretøy typer</CardDescription>
             </div>
-            <Button variant="outline">
-              <Plus className="mr-2 h-4 w-4" />
-              Legg til type
-            </Button>
+            <AddVehicleTypeDialog />
           </div>
         </CardHeader>
         <CardContent>

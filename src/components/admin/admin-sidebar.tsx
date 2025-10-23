@@ -13,7 +13,8 @@ import {
   BarChart3,
   Clock,
   FileText,
-  MessageSquare
+  MessageSquare,
+  Shield
 } from 'lucide-react'
 
 const sidebarNavItems = [
@@ -66,6 +67,11 @@ const sidebarNavItems = [
     title: 'Innstillinger',
     href: '/admin/innstillinger',
     icon: Settings,
+  },
+  {
+    title: 'Lisensstyring',
+    href: '/admin/lisens',
+    icon: Shield,
   },
 ]
 

@@ -257,12 +257,7 @@ export default function PrislistePage() {
               <p className="mb-4">
                 Vi ber om at du gir beskjed i god tid dersom du må avbestille eller flytte din time.
               </p>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
-                <h4 className="font-semibold text-green-800 mb-2">Kundefordel - Klippekort</h4>
-                <p className="text-green-700">
-                  Kjøp klippekort og få hver 5. vaskepakke <strong>GRATIS!</strong> En smart måte å spare penger på regelmessig bilpleie.
-                </p>
-              </div>
+
             </CardContent>
           </Card>
         </div>

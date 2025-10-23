@@ -256,3 +256,37 @@ model AdminSettings {
   
   @@map("admin_settings")
 }
+
+// Lisenssystem
+model License {
+  id                String        @id @default(cuid())
+  licenseKey        String        @unique  // Unik lisenskode fra kksas.no
+  validationToken   String                 // Token for validering mot kksas.no
+  customerName      String?                // Kundens navn
+  customerDomain    String?                // Tillatt domene (f.eks. "svampen.no")
+  isActive          Boolean       @default(true)
+  expiresAt         DateTime?              // Utløpsdato (null = ingen utløp)
+  lastValidatedAt   DateTime?              // Sist validert mot kksas.no
+  features          String        @db.Text // JSON string med aktive features
+  maxBookingsPerMonth Int?                 // Maks bookinger per måned (null = ubegrenset)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  // Relasjon til validering historikk
+  validationLogs    LicenseValidationLog[]
+  
+  @@map("licenses")
+}
+
+// Logg for lisensvalidering
+model LicenseValidationLog {
+  id          String   @id @default(cuid())
+  licenseId   String
+  license     License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  isValid     Boolean
+  responseData String? @db.Text // JSON data fra kksas.no
+  errorMessage String? @db.Text
+  validatedAt DateTime @default(now())
+  
+  @@map("license_validation_logs")
+}
