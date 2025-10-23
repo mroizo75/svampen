@@ -11,10 +11,98 @@ import {
   Droplets,
   Star
 } from 'lucide-react'
+import { prisma } from '@/lib/prisma'
+import { generateServiceListSchema, generateLocalBusinessSchema } from '@/lib/structured-data'
+import { Metadata } from 'next'
 
-export default function TjenesterPage() {
+export const metadata: Metadata = {
+  title: 'Våre Tjenester - Profesjonell Bil- og Båtvask | Svampen',
+  description: 'Fra enkel vask til komplett bilpleie - vi tilbyr alt du trenger for å holde kjøretøyet ditt i toppstand. Bestill online i dag!',
+  keywords: 'bilvask, båtvask, bilpleie, polering, voksing, Kristiansand',
+}
+
+async function getServicesForSEO() {
+  try {
+    const services = await prisma.service.findMany({
+      where: { isActive: true },
+      include: {
+        servicePrices: {
+          include: {
+            vehicleType: true,
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    })
+
+    return services.map(service => ({
+      ...service,
+      servicePrices: service.servicePrices.map(sp => ({
+        ...sp,
+        price: Number(sp.price),
+      })),
+    }))
+  } catch (error) {
+    console.error('Error fetching services for SEO:', error)
+    return []
+  }
+}
+
+async function getBusinessInfo() {
+  try {
+    const settings = await prisma.adminSettings.findMany({
+      where: {
+        key: {
+          in: ['business_name', 'business_phone', 'business_email', 'business_address', 'business_hours_start', 'business_hours_end'],
+        },
+      },
+    })
+    
+    const settingsMap = settings.reduce((acc, setting) => {
+      acc[setting.key] = setting.value
+      return acc
+    }, {} as Record<string, string>)
+
+    return {
+      name: settingsMap.business_name || 'Svampen',
+      phone: settingsMap.business_phone || '',
+      email: settingsMap.business_email || '',
+      address: settingsMap.business_address || '',
+      hoursStart: settingsMap.business_hours_start || '08:00',
+      hoursEnd: settingsMap.business_hours_end || '16:00',
+    }
+  } catch (error) {
+    console.error('Error fetching business info:', error)
+    return {
+      name: 'Svampen',
+      phone: '',
+      email: '',
+      address: '',
+      hoursStart: '08:00',
+      hoursEnd: '16:00',
+    }
+  }
+}
+
+export default async function TjenesterPage() {
+  const services = await getServicesForSEO()
+  const businessInfo = await getBusinessInfo()
+  
+  // Generer structured data for SEO
+  const serviceListSchema = generateServiceListSchema(services, businessInfo.name)
+  const localBusinessSchema = generateLocalBusinessSchema(businessInfo)
+
   return (
     <MainLayout>
+      {/* Structured Data for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceListSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
+      />
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16">
         <div className="container mx-auto px-4 text-center">
