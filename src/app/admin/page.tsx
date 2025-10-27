@@ -75,11 +75,14 @@ async function getDashboardStats() {
       },
     })
 
-    // Kommende bestillinger
+    // Kommende bestillinger (inkluderer dagens bestillinger)
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    
     const upcomingBookings = await prisma.booking.findMany({
       where: {
         scheduledDate: {
-          gte: new Date(),
+          gte: todayStart,
         },
         status: {
           in: ['PENDING', 'CONFIRMED'],
@@ -98,9 +101,14 @@ async function getDashboardStats() {
           },
         },
       },
-      orderBy: {
-        scheduledDate: 'asc',
-      },
+      orderBy: [
+        {
+          scheduledDate: 'asc',
+        },
+        {
+          scheduledTime: 'asc',
+        },
+      ],
       take: 5,
     })
 

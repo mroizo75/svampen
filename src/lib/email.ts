@@ -148,6 +148,21 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
                 </p>
               </div>
 
+              <!-- Google Review Request -->
+              <div style="margin-top: 30px; padding: 25px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; text-align: center; border: 2px solid #fbbf24;">
+                <h3 style="margin: 0 0 15px 0; color: #92400e; font-size: 18px; font-weight: 700;">⭐ Er du fornøyd med oss?</h3>
+                <p style="margin: 0 0 20px 0; color: #78350f; font-size: 15px; line-height: 1.6;">
+                  Din mening betyr mye! Hjelp andre kunder ved å dele din opplevelse på Google.
+                </p>
+                <a href="https://g.page/r/YOUR_PLACE_ID/review" 
+                   style="display: inline-block; padding: 14px 32px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);">
+                  ⭐ Legg igjen en anmeldelse
+                </a>
+                <p style="margin: 15px 0 0 0; color: #92400e; font-size: 13px;">
+                  Det tar bare 30 sekunder!
+                </p>
+              </div>
+
               <p style="margin: 30px 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
                 Takk for at du valgte Svampen - din profesjonelle partner for bil- og båtpleie!
               </p>

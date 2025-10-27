@@ -50,8 +50,15 @@ export async function POST(request: NextRequest) {
     let userId = session?.user?.id
     let user: any = session?.user
 
-    // If not logged in, handle guest/new user registration
-    if (!session) {
+    // If admin is booking for a customer, handle customer info
+    // OR if not logged in, handle guest/new user registration
+    if (bookingData.isAdminBooking || !session) {
+      console.log('🔍 Håndterer kundeinformasjon:', {
+        isAdminBooking: bookingData.isAdminBooking,
+        hasSession: !!session,
+        customerEmail: bookingData.customerInfo.email,
+        adminEmail: session?.user?.email || 'ingen'
+      })
       // Check if user wants to create account
       if (bookingData.customerInfo.createAccount) {
         // Check if email already exists
@@ -60,21 +67,79 @@ export async function POST(request: NextRequest) {
         })
 
         if (existingUser) {
-          return NextResponse.json(
-            { message: 'En bruker med denne e-posten eksisterer allerede. Vennligst logg inn.' },
-            { status: 409 }
-          )
-        }
-
-        // Create new user
-        if (!bookingData.customerInfo.password) {
-          return NextResponse.json(
-            { message: 'Passord er påkrevd for å opprette konto' },
-            { status: 400 }
-          )
-        }
-
-        const hashedPassword = await bcrypt.hash(bookingData.customerInfo.password, 12)
+          // If admin booking and user exists, update user info if changed
+          if (bookingData.isAdminBooking) {
+            // Check if admin has updated customer info
+            const needsUpdate = 
+              existingUser.firstName !== bookingData.customerInfo.firstName ||
+              existingUser.lastName !== bookingData.customerInfo.lastName ||
+              existingUser.phone !== bookingData.customerInfo.phone
+            
+            if (needsUpdate) {
+              // Update existing user with new info from admin
+              const updatedUser = await prisma.user.update({
+                where: { id: existingUser.id },
+                data: {
+                  firstName: bookingData.customerInfo.firstName,
+                  lastName: bookingData.customerInfo.lastName,
+                  phone: bookingData.customerInfo.phone || existingUser.phone,
+                }
+              })
+              
+              userId = updatedUser.id
+              user = {
+                id: updatedUser.id,
+                email: updatedUser.email,
+                name: `${updatedUser.firstName} ${updatedUser.lastName}`,
+                firstName: updatedUser.firstName,
+                lastName: updatedUser.lastName,
+                phone: updatedUser.phone,
+                role: updatedUser.role,
+              }
+              
+              console.log('🔄 Oppdaterte eksisterende kundes informasjon:', {
+                email: updatedUser.email,
+                oldName: `${existingUser.firstName} ${existingUser.lastName}`,
+                newName: `${updatedUser.firstName} ${updatedUser.lastName}`
+              })
+            } else {
+              // Use existing user as-is
+              userId = existingUser.id
+              user = {
+                id: existingUser.id,
+                email: existingUser.email,
+                name: `${existingUser.firstName} ${existingUser.lastName}`,
+                firstName: existingUser.firstName,
+                lastName: existingUser.lastName,
+                phone: existingUser.phone,
+                role: existingUser.role,
+              }
+            }
+          } else {
+            return NextResponse.json(
+              { message: 'En bruker med denne e-posten eksisterer allerede. Vennligst logg inn.' },
+              { status: 409 }
+            )
+          }
+        } else {
+          // Create new user
+          // For admin bookings, password is not required (will be set to random)
+          let hashedPassword: string
+          
+          if (bookingData.isAdminBooking) {
+            // Generate random password for admin-created accounts
+            const randomPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12)
+            hashedPassword = await bcrypt.hash(randomPassword, 12)
+          } else {
+            // For self-registration, password is required
+            if (!bookingData.customerInfo.password) {
+              return NextResponse.json(
+                { message: 'Passord er påkrevd for å opprette konto' },
+                { status: 400 }
+              )
+            }
+            hashedPassword = await bcrypt.hash(bookingData.customerInfo.password, 12)
+          }
         
         try {
           const newUser = await prisma.user.create({
@@ -98,38 +163,89 @@ export async function POST(request: NextRequest) {
             phone: newUser.phone,
             role: newUser.role,
           }
-        } catch (error) {
-          console.error('Error creating user:', error)
-          return NextResponse.json(
-            { message: 'Feil ved opprettelse av bruker' },
-            { status: 500 }
-          )
+          } catch (error) {
+            console.error('Error creating user:', error)
+            return NextResponse.json(
+              { message: 'Feil ved opprettelse av bruker' },
+              { status: 500 }
+            )
+          }
         }
       } else {
-        // Guest booking - create temporary user or handle differently
-        // For now, we'll create a user without password (guest)
+        // Guest booking (no account creation) - create temporary user or handle differently
         const existingUser = await prisma.user.findUnique({
           where: { email: bookingData.customerInfo.email }
         })
 
         if (existingUser) {
-          userId = existingUser.id
-          user = {
-            id: existingUser.id,
-            email: existingUser.email,
-            name: `${existingUser.firstName} ${existingUser.lastName}`,
-            firstName: existingUser.firstName,
-            lastName: existingUser.lastName,
-            phone: existingUser.phone,
-            role: existingUser.role,
+          // If admin booking, update user info if changed
+          if (bookingData.isAdminBooking) {
+            const needsUpdate = 
+              existingUser.firstName !== bookingData.customerInfo.firstName ||
+              existingUser.lastName !== bookingData.customerInfo.lastName ||
+              existingUser.phone !== bookingData.customerInfo.phone
+            
+            if (needsUpdate) {
+              const updatedUser = await prisma.user.update({
+                where: { id: existingUser.id },
+                data: {
+                  firstName: bookingData.customerInfo.firstName,
+                  lastName: bookingData.customerInfo.lastName,
+                  phone: bookingData.customerInfo.phone || existingUser.phone,
+                }
+              })
+              
+              userId = updatedUser.id
+              user = {
+                id: updatedUser.id,
+                email: updatedUser.email,
+                name: `${updatedUser.firstName} ${updatedUser.lastName}`,
+                firstName: updatedUser.firstName,
+                lastName: updatedUser.lastName,
+                phone: updatedUser.phone,
+                role: updatedUser.role,
+              }
+              
+              console.log('🔄 Oppdaterte eksisterende kundes informasjon (guest mode):', {
+                email: updatedUser.email,
+                oldName: `${existingUser.firstName} ${existingUser.lastName}`,
+                newName: `${updatedUser.firstName} ${updatedUser.lastName}`
+              })
+            } else {
+              userId = existingUser.id
+              user = {
+                id: existingUser.id,
+                email: existingUser.email,
+                name: `${existingUser.firstName} ${existingUser.lastName}`,
+                firstName: existingUser.firstName,
+                lastName: existingUser.lastName,
+                phone: existingUser.phone,
+                role: existingUser.role,
+              }
+            }
+          } else {
+            // Not admin booking, use existing user as-is
+            userId = existingUser.id
+            user = {
+              id: existingUser.id,
+              email: existingUser.email,
+              name: `${existingUser.firstName} ${existingUser.lastName}`,
+              firstName: existingUser.firstName,
+              lastName: existingUser.lastName,
+              phone: existingUser.phone,
+              role: existingUser.role,
+            }
           }
         } else {
-          // Create guest user (without password)
+          // Create guest user (with random password for security)
           try {
+            const randomPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12)
+            const hashedPassword = await bcrypt.hash(randomPassword, 12)
+            
             const guestUser = await prisma.user.create({
               data: {
                 email: bookingData.customerInfo.email,
-                password: '', // Empty password for guest users
+                password: hashedPassword,
                 firstName: bookingData.customerInfo.firstName,
                 lastName: bookingData.customerInfo.lastName,
                 phone: bookingData.customerInfo.phone || '',
@@ -155,6 +271,16 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+    }
+
+    // Log final user info before creating booking
+    if (bookingData.isAdminBooking) {
+      console.log('✅ Admin-booking - bruker funnet/opprettet:', {
+        userId: userId,
+        userName: user?.name || `${user?.firstName} ${user?.lastName}`,
+        userEmail: user?.email,
+        adminEmail: session?.user?.email
+      })
     }
 
     // Validering

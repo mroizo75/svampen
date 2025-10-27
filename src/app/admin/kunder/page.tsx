@@ -30,6 +30,7 @@ import {
   Shield
 } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
+import { AddCustomerDialog } from '@/components/admin/add-customer-dialog'
 
 async function getCustomers() {
   try {
@@ -144,10 +145,7 @@ export default async function AdminCustomersPage() {
           <h1 className="text-3xl font-bold text-gray-900">Kunder</h1>
           <p className="text-gray-600">Administrer kundekontoer og se kunde-aktivitet</p>
         </div>
-        <Button>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Legg til kunde
-        </Button>
+        <AddCustomerDialog />
       </div>
 
       {/* Stats Cards */}
