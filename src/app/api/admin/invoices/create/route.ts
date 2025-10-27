@@ -181,7 +181,7 @@ export async function POST(request: Request) {
     await prisma.booking.update({
       where: { id: booking.id },
       data: {
-        paymentStatus: 'PENDING',
+        paymentStatus: 'UNPAID',
         paymentMethod: 'invoice',
       },
     })

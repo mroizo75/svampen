@@ -6,7 +6,7 @@ import { authOptions } from '@/lib/auth'
 // GET - Hent enkelt bedrift
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -18,8 +18,9 @@ export async function GET(
       )
     }
 
+    const { id } = await params
     const company = await prisma.company.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         contactPerson: {
           select: {
@@ -81,7 +82,7 @@ export async function GET(
 // PUT - Oppdater bedrift
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -93,11 +94,12 @@ export async function PUT(
       )
     }
 
+    const { id } = await params
     const data = await req.json()
 
     // Sjekk om bedriften eksisterer
     const existingCompany = await prisma.company.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingCompany) {
@@ -112,7 +114,7 @@ export async function PUT(
       const duplicateOrgNumber = await prisma.company.findFirst({
         where: {
           orgNumber: data.orgNumber,
-          NOT: { id: params.id }
+          NOT: { id }
         }
       })
 
@@ -126,7 +128,7 @@ export async function PUT(
 
     // Oppdater bedrift
     const updatedCompany = await prisma.company.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name: data.name,
         orgNumber: data.orgNumber || null,
@@ -183,7 +185,7 @@ export async function PUT(
 // DELETE - Slett bedrift
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -195,9 +197,11 @@ export async function DELETE(
       )
     }
 
+    const { id } = await params
+
     // Sjekk om bedriften har bookinger
     const company = await prisma.company.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: { bookings: true }
@@ -215,7 +219,7 @@ export async function DELETE(
     if (company._count.bookings > 0) {
       // Soft delete - deaktiver istedenfor å slette
       await prisma.company.update({
-        where: { id: params.id },
+        where: { id },
         data: { isActive: false }
       })
 
@@ -226,7 +230,7 @@ export async function DELETE(
 
     // Hard delete hvis ingen bookinger
     await prisma.company.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     console.log(`✅ Bedrift slettet: ${company.name}`)

@@ -40,6 +40,10 @@ async function getBookings(page: number = 1) {
     const serializedBookings = bookings.map(booking => ({
       ...booking,
       totalPrice: Number(booking.totalPrice),
+      company: booking.company ? {
+        name: booking.company.name,
+        discountPercent: booking.company.discountPercent ? Number(booking.company.discountPercent) : 0,
+      } : null,
       bookingVehicles: booking.bookingVehicles.map(vehicle => ({
         ...vehicle,
         bookingServices: vehicle.bookingServices.map(service => ({

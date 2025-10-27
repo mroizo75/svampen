@@ -123,6 +123,10 @@ export async function getOrCreateCustomer(companyData: {
       customerId = data.value.id
     }
 
+    if (!customerId) {
+      throw new Error('Failed to get or create customer: customerId is null')
+    }
+
     return customerId
   } catch (error) {
     console.error('Error in getOrCreateCustomer:', error)
@@ -184,6 +188,10 @@ export async function getOrCreateProduct(productData: {
 
       const data = await createResponse.json()
       productId = data.value.id
+    }
+
+    if (!productId) {
+      throw new Error('Failed to get or create product: productId is null')
     }
 
     return productId
