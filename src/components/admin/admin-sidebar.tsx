@@ -14,7 +14,8 @@ import {
   Clock,
   FileText,
   MessageSquare,
-  Shield
+  Shield,
+  Building2
 } from 'lucide-react'
 
 const sidebarNavItems = [
@@ -42,6 +43,11 @@ const sidebarNavItems = [
     title: 'Kunder',
     href: '/admin/kunder',
     icon: Users,
+  },
+  {
+    title: 'Bedriftskunder',
+    href: '/admin/bedriftskunder',
+    icon: Building2,
   },
   {
     title: 'Tjenester',

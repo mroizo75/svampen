@@ -22,8 +22,11 @@ import {
   Users,
   AlertTriangle,
   Shield,
-  Info
+  Info,
+  Building2,
+  AlertCircle
 } from 'lucide-react'
+import Link from 'next/link'
 import { VehicleSelector } from './vehicle-selector'
 import { ServiceSelector } from './service-selector'
 import { CustomerInfoStep } from './customer-info-step'
@@ -78,6 +81,7 @@ interface CustomerInfo {
 interface BookingData {
   vehicles: BookingVehicle[]
   customerInfo: CustomerInfo
+  companyId?: string  // Bedriftsbooking
   scheduledDate?: Date
   scheduledTime?: string
   customerNotes: string
@@ -111,7 +115,7 @@ export function MultiBookingWizard({
 }: MultiBookingWizardProps) {
   const router = useRouter()
   const { data: session } = useSession()
-  const [currentStep, setCurrentStep] = useState(1)
+  const [currentStep, setCurrentStep] = useState(isAdminBooking ? 0 : 1) // Start på steg 0 for admin
   const [bookingData, setBookingData] = useState<BookingData>({
     vehicles: [],
     customerInfo: {
@@ -131,6 +135,7 @@ export function MultiBookingWizard({
       createAccount: false,
       isExistingUser: isAdminBooking ? false : !!(session?.user || user),
     },
+    companyId: undefined,
     customerNotes: '',
     totalPrice: 0,
     totalDuration: 0,
@@ -138,6 +143,9 @@ export function MultiBookingWizard({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [maxAvailableMinutes, setMaxAvailableMinutes] = useState<number | null>(null)
+  const [companies, setCompanies] = useState<any[]>([])
+  const [selectedCompany, setSelectedCompany] = useState<any | null>(null)
+  const [customerType, setCustomerType] = useState<'private' | 'company'>('private') // Ny state for kundetype
   const [adminOverride, setAdminOverride] = useState(false)
   const [sendSms, setSendSms] = useState(true) // Default til å sende SMS
 
@@ -182,14 +190,63 @@ export function MultiBookingWizard({
     }
   }, [session, bookingData.customerInfo.isExistingUser, isAdminBooking])
 
+  // Hent bedrifter hvis admin-booking
+  useEffect(() => {
+    if (isAdminBooking) {
+      fetch('/api/admin/companies?activeOnly=true')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setCompanies(data)
+          }
+        })
+        .catch(err => console.error('Error fetching companies:', err))
+    }
+  }, [isAdminBooking])
+
+  // Oppdater kundeinformasjon når bedrift velges
+  useEffect(() => {
+    if (selectedCompany && customerType === 'company') {
+      setBookingData(prev => ({
+        ...prev,
+        companyId: selectedCompany.id,
+        customerInfo: {
+          ...prev.customerInfo,
+          email: selectedCompany.contactEmail,
+          phone: selectedCompany.contactPhone || '',
+          firstName: selectedCompany.contactPerson?.firstName || '',
+          lastName: selectedCompany.contactPerson?.lastName || '',
+        }
+      }))
+    }
+  }, [selectedCompany, customerType])
+
   // Sjekk for pre-valgt dato/tid fra kalender (quick booking)
   useEffect(() => {
     if (isAdminBooking) {
       const quickBookingDate = sessionStorage.getItem('quickBookingDate')
       const quickBookingTime = sessionStorage.getItem('quickBookingTime')
       const quickBookingCustomer = sessionStorage.getItem('quickBookingCustomer')
+      const quickBookingCustomerType = sessionStorage.getItem('quickBookingCustomerType')
+      const quickBookingCompanyId = sessionStorage.getItem('quickBookingCompanyId')
+      const quickBookingTemplate = sessionStorage.getItem('quickBookingTemplate')
       
-      if (quickBookingDate || quickBookingTime || quickBookingCustomer) {
+      if (quickBookingDate || quickBookingTime || quickBookingCustomer || quickBookingCustomerType || quickBookingTemplate) {
+        // Sett kundetype
+        if (quickBookingCustomerType === 'company') {
+          setCustomerType('company')
+        } else {
+          setCustomerType('private')
+        }
+
+        // Sett bedrift hvis bedriftskunde
+        if (quickBookingCompanyId && companies.length > 0) {
+          const company = companies.find(c => c.id === quickBookingCompanyId)
+          if (company) {
+            setSelectedCompany(company)
+          }
+        }
+
         setBookingData(prev => {
           const updates: any = {}
           
@@ -213,17 +270,61 @@ export function MultiBookingWizard({
               console.error('Error parsing quickBookingCustomer:', e)
             }
           }
+          if (quickBookingCompanyId) {
+            updates.companyId = quickBookingCompanyId
+          }
+          
+          // Håndter booking-mal hvis valgt
+          if (quickBookingTemplate) {
+            try {
+              const template = JSON.parse(quickBookingTemplate)
+              const vehiclesConfig = typeof template.vehiclesConfig === 'string' 
+                ? JSON.parse(template.vehiclesConfig) 
+                : template.vehiclesConfig
+              
+              // Konverter vehiclesConfig til vehicles array
+              const templateVehicles = vehiclesConfig.map((vc: any) => ({
+                id: Math.random().toString(36).substr(2, 9),
+                vehicleTypeId: vc.vehicleTypeId,
+                vehicleInfo: vc.vehicleInfo || '',
+                vehicleNotes: vc.vehicleNotes || '',
+                services: vc.services.map((s: any) => ({
+                  serviceId: s.serviceId,
+                  quantity: s.quantity || 1,
+                  unitPrice: 0, // Vil bli beregnet av wizard
+                  totalPrice: 0,
+                  duration: 0,
+                })),
+              }))
+              
+              updates.vehicles = templateVehicles
+              
+              // Sett notater fra mal hvis det finnes
+              if (template.defaultNotes) {
+                updates.customerNotes = template.defaultNotes
+              }
+            } catch (e) {
+              console.error('Error parsing quickBookingTemplate:', e)
+            }
+          }
           
           return { ...prev, ...updates }
         })
+        
+        // ✨ HOPP OVER STEG 0 - start direkte på steg 1 (kjøretøy/tjenester)
+        // Dette gjør quick-booking virkelig "rask"!
+        setCurrentStep(1)
         
         // Rydd opp sessionStorage
         sessionStorage.removeItem('quickBookingDate')
         sessionStorage.removeItem('quickBookingTime')
         sessionStorage.removeItem('quickBookingCustomer')
+        sessionStorage.removeItem('quickBookingCustomerType')
+        sessionStorage.removeItem('quickBookingCompanyId')
+        sessionStorage.removeItem('quickBookingTemplate')
       }
     }
-  }, [isAdminBooking])
+  }, [isAdminBooking, companies])
 
   // Sjekk tilgjengelig tid når dato er valgt (for admin bookinger)
   useEffect(() => {
@@ -290,28 +391,54 @@ export function MultiBookingWizard({
   }
 
   const canProceedToStep = (step: number) => {
-    switch (step) {
-      case 2:
-        const hasVehiclesAndServices = bookingData.vehicles.length > 0 && 
-                                        bookingData.vehicles.every(v => v.vehicleTypeId && v.services.length > 0)
-        
-        // For admin bookinger: sjekk tilgjengelig tid (med mindre override er aktivert)
-        if (isAdminBooking && maxAvailableMinutes !== null && !adminOverride) {
-          return hasVehiclesAndServices && bookingData.totalDuration <= maxAvailableMinutes
-        }
-        
-        return hasVehiclesAndServices
-      case 3:
-        return bookingData.customerInfo.firstName && 
-               bookingData.customerInfo.lastName && 
-               bookingData.customerInfo.email && 
-               bookingData.customerInfo.phone
-      case 4:
-        return bookingData.scheduledDate && bookingData.scheduledTime
-      case 5:
-        return true
-      default:
-        return true
+    if (isAdminBooking) {
+      // Admin flow: 0 (velg kunde) -> 1 (kjøretøy) -> 2 (dato/tid) -> 3 (bekreftelse)
+      switch (step) {
+        case 1: // Fra steg 0 til 1
+          // Må ha valgt kundetype og fylt inn/valgt kunde
+          if (customerType === 'company') {
+            return !!selectedCompany
+          } else {
+            return bookingData.customerInfo.firstName && 
+                   bookingData.customerInfo.lastName && 
+                   bookingData.customerInfo.email && 
+                   bookingData.customerInfo.phone
+          }
+        case 2: // Fra steg 1 til 2
+          const hasVehiclesAndServices = bookingData.vehicles.length > 0 && 
+                                          bookingData.vehicles.every(v => v.vehicleTypeId && v.services.length > 0)
+          
+          // Sjekk tilgjengelig tid (med mindre override er aktivert)
+          if (maxAvailableMinutes !== null && !adminOverride) {
+            return hasVehiclesAndServices && bookingData.totalDuration <= maxAvailableMinutes
+          }
+          
+          return hasVehiclesAndServices
+        case 3: // Fra steg 2 til 3
+          return bookingData.scheduledDate && bookingData.scheduledTime
+        case 4: // Fra steg 3 til submit
+          return true
+        default:
+          return true
+      }
+    } else {
+      // Normal flow: 1 (kjøretøy) -> 2 (kundeinfo) -> 3 (dato/tid) -> 4 (bekreftelse)
+      switch (step) {
+        case 2: // Fra steg 1 til 2
+          return bookingData.vehicles.length > 0 && 
+                 bookingData.vehicles.every(v => v.vehicleTypeId && v.services.length > 0)
+        case 3: // Fra steg 2 til 3
+          return bookingData.customerInfo.firstName && 
+                 bookingData.customerInfo.lastName && 
+                 bookingData.customerInfo.email && 
+                 bookingData.customerInfo.phone
+        case 4: // Fra steg 3 til 4
+          return bookingData.scheduledDate && bookingData.scheduledTime
+        case 5: // Fra steg 4 til submit
+          return true
+        default:
+          return true
+      }
     }
   }
 
@@ -368,12 +495,19 @@ export function MultiBookingWizard({
     }
   }
 
-  const steps = [
-    { number: 1, title: 'Kjøretøy & Tjenester', icon: Car },
-    { number: 2, title: 'Kunde informasjon', icon: Users },
-    { number: 3, title: 'Dato & Tid', icon: Calendar },
-    { number: 4, title: 'Bekreftelse', icon: CheckCircle },
-  ]
+  const steps = isAdminBooking 
+    ? [
+        { number: 0, title: 'Velg kunde', icon: Users },
+        { number: 1, title: 'Kjøretøy & Tjenester', icon: Car },
+        { number: 2, title: 'Dato & Tid', icon: Calendar },
+        { number: 3, title: 'Bekreftelse', icon: CheckCircle },
+      ]
+    : [
+        { number: 1, title: 'Kjøretøy & Tjenester', icon: Car },
+        { number: 2, title: 'Kunde informasjon', icon: Users },
+        { number: 3, title: 'Dato & Tid', icon: Calendar },
+        { number: 4, title: 'Bekreftelse', icon: CheckCircle },
+      ]
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -408,16 +542,58 @@ export function MultiBookingWizard({
         </div>
       </div>
 
+      {/* Quick Booking Customer Info Banner - vises når man har hoppet over steg 0 */}
+      {isAdminBooking && currentStep > 0 && (
+        <Alert className="mb-6 bg-blue-50 border-blue-200">
+          <CheckCircle className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-900">
+            <div className="flex items-center justify-between">
+              <div>
+                <strong>Booking for:</strong>{' '}
+                {customerType === 'company' && selectedCompany ? (
+                  <>
+                    <span className="font-semibold">{selectedCompany.name}</span>
+                    {' '}({selectedCompany.contactEmail})
+                    {selectedCompany.discountPercent > 0 && (
+                      <Badge variant="secondary" className="ml-2">
+                        {selectedCompany.discountPercent}% rabatt
+                      </Badge>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {bookingData.customerInfo.firstName} {bookingData.customerInfo.lastName}
+                    {' '}({bookingData.customerInfo.email})
+                  </>
+                )}
+              </div>
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-blue-600"
+                onClick={() => setCurrentStep(0)}
+              >
+                Endre kunde
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Step Content */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            Steg {currentStep}: {steps[currentStep - 1].title}
+          <CardTitle className="flex items-center">
+            <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center mr-3">
+              {isAdminBooking ? currentStep + 1 : currentStep}
+            </span>
+            Steg {isAdminBooking ? currentStep + 1 : currentStep}: {steps.find(s => s.number === currentStep)?.title}
           </CardTitle>
           <CardDescription>
+            {currentStep === 0 && 'Velg om dette er en privat- eller bedriftsbooking'}
             {currentStep === 1 && 'Legg til kjøretøy og velg tjenester for hver'}
-            {currentStep === 2 && 'Oppgi dine kontaktopplysninger for bestillingen'}
-            {currentStep === 3 && 'Velg ønsket dato og tid for hele bestillingen'}
+            {currentStep === 2 && (isAdminBooking ? 'Velg ønsket dato og tid for hele bestillingen' : 'Oppgi dine kontaktopplysninger for bestillingen')}
+            {currentStep === 3 && (isAdminBooking ? 'Bekreft din bestilling før den sendes inn' : 'Velg ønsket dato og tid for hele bestillingen')}
             {currentStep === 4 && 'Bekreft din bestilling før den sendes inn'}
           </CardDescription>
         </CardHeader>
@@ -479,6 +655,174 @@ export function MultiBookingWizard({
                 </div>
               </AlertDescription>
             </Alert>
+          )}
+
+          {/* Step 0: Customer Type Selection (Admin Only) */}
+          {isAdminBooking && currentStep === 0 && (
+            <div className="space-y-6">
+              <Alert className="bg-blue-50 border-blue-200">
+                <Info className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-900">
+                  <strong>Velg kundetype først:</strong> Dette avgjør om bookingen knyttes til en bedrift med fasteavtale eller en privatkunde.
+                </AlertDescription>
+              </Alert>
+
+              {/* Kundetype Valg */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Kundetype</CardTitle>
+                  <CardDescription>Velg om dette er en bedrifts- eller privat booking</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerType('private')
+                        setSelectedCompany(null)
+                        setBookingData(prev => ({
+                          ...prev,
+                          companyId: undefined,
+                          customerInfo: {
+                            ...prev.customerInfo,
+                            firstName: prefilledCustomerInfo?.firstName || '',
+                            lastName: prefilledCustomerInfo?.lastName || '',
+                            email: prefilledCustomerInfo?.email || '',
+                            phone: prefilledCustomerInfo?.phone || '',
+                          }
+                        }))
+                      }}
+                      className={`p-6 border-2 rounded-lg text-left transition-all ${
+                        customerType === 'private'
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <div className="flex items-center mb-3">
+                        <Users className="h-6 w-6 mr-3 text-blue-600" />
+                        <h3 className="font-semibold text-lg">Privatkunde</h3>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Vanlig kunde som betaler ordinære priser. Fyll inn kundeopplysninger manuelt.
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerType('company')
+                      }}
+                      className={`p-6 border-2 rounded-lg text-left transition-all ${
+                        customerType === 'company'
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <div className="flex items-center mb-3">
+                        <Building2 className="h-6 w-6 mr-3 text-purple-600" />
+                        <h3 className="font-semibold text-lg">Bedriftskunde</h3>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Bedrift med fasteavtale. Velg fra eksisterende bedrifter med spesialpriser og vilkår.
+                      </p>
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Bedriftsvalg */}
+              {customerType === 'company' && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Building2 className="mr-2 h-5 w-5" />
+                      Velg bedrift
+                    </CardTitle>
+                    <CardDescription>
+                      Velg hvilken bedrift denne bookingen er for
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {companies.length === 0 ? (
+                      <Alert>
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          Ingen aktive bedrifter funnet. <Link href="/admin/bedriftskunder" className="underline">Legg til bedrift først</Link>.
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="company-select">Bedrift *</Label>
+                          <select
+                            id="company-select"
+                            value={selectedCompany?.id || ''}
+                            onChange={(e) => {
+                              const company = companies.find(c => c.id === e.target.value)
+                              setSelectedCompany(company || null)
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            required
+                          >
+                            <option value="">-- Velg bedrift --</option>
+                            {companies.map(company => (
+                              <option key={company.id} value={company.id}>
+                                {company.name} {company.discountPercent > 0 && `(${company.discountPercent}% rabatt)`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        
+                        {selectedCompany && (
+                          <Alert className="bg-green-50 border-green-200">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <AlertDescription className="text-green-800">
+                              <div className="space-y-2">
+                                <div className="font-medium text-lg">{selectedCompany.name}</div>
+                                {selectedCompany.orgNumber && (
+                                  <div className="text-sm">Org.nr: {selectedCompany.orgNumber}</div>
+                                )}
+                                <div className="text-sm">
+                                  <strong>Kontakt:</strong> {selectedCompany.contactEmail}
+                                  {selectedCompany.contactPhone && ` • ${selectedCompany.contactPhone}`}
+                                </div>
+                                {selectedCompany.discountPercent > 0 && (
+                                  <div className="text-sm font-medium">
+                                    ✅ Rabatt: {selectedCompany.discountPercent}%
+                                  </div>
+                                )}
+                                {selectedCompany.paymentTerms && (
+                                  <div className="text-sm">
+                                    Betalingsvilkår: {selectedCompany.paymentTerms}
+                                  </div>
+                                )}
+                                {selectedCompany.specialTerms && (
+                                  <div className="text-sm text-gray-700 mt-2 pt-2 border-t border-green-300">
+                                    <strong>Spesielle vilkår:</strong><br />
+                                    {selectedCompany.specialTerms}
+                                  </div>
+                                )}
+                              </div>
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Privatkunde-info */}
+              {customerType === 'private' && (
+                <CustomerInfoStep
+                  customerInfo={bookingData.customerInfo}
+                  onCustomerInfoChange={(customerInfo) => 
+                    setBookingData(prev => ({ ...prev, customerInfo }))
+                  }
+                  isAdminBooking={isAdminBooking}
+                />
+              )}
+            </div>
           )}
 
           {/* Step 1: Vehicles & Services */}
@@ -545,110 +889,141 @@ export function MultiBookingWizard({
             </div>
           )}
 
-          {/* Step 2: Customer Info */}
+          {/* Step 2: Date & Time (Admin) eller Customer Info (Normal) */}
           {currentStep === 2 && (
             <>
-              <CustomerInfoStep
-                customerInfo={bookingData.customerInfo}
-                onCustomerInfoChange={(customerInfo) => 
-                  setBookingData(prev => ({ ...prev, customerInfo }))
-                }
-                isAdminBooking={isAdminBooking}
-              />
-              
-              {/* SMS-valg for admin */}
-              {isAdminBooking && (
-                <Alert className="mt-6 bg-blue-50 border-blue-200">
-                  <Info className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-blue-900">
-                    <div className="flex items-start space-x-3">
-                      <input
-                        type="checkbox"
-                        id="sendSms"
-                        checked={sendSms}
-                        onChange={(e) => setSendSms(e.target.checked)}
-                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <div className="flex-1">
-                        <label htmlFor="sendSms" className="cursor-pointer font-medium">
-                          Send SMS-bekreftelse til kunde
-                        </label>
-                        <p className="text-sm text-blue-700 mt-1">
-                          SMS sendes kun til mobilnummer (starter med 4 eller 9). 
-                          {bookingData.customerInfo.phone && (
-                            <>
-                              {' '}Telefonnummer: <strong>{bookingData.customerInfo.phone}</strong>
-                              {!/^[49]\d{7}$/.test(bookingData.customerInfo.phone.replace(/\s/g, '')) && (
-                                <span className="text-orange-600"> (ikke et mobilnummer)</span>
-                              )}
-                            </>
-                          )}
-                        </p>
+              {!isAdminBooking ? (
+                // For normale kunder: Kundeinformasjon
+                <CustomerInfoStep
+                  customerInfo={bookingData.customerInfo}
+                  onCustomerInfoChange={(customerInfo) => 
+                    setBookingData(prev => ({ ...prev, customerInfo }))
+                  }
+                  isAdminBooking={false}
+                />
+              ) : (
+                // For admin: Dato & Tid (tidligere steg 3)
+                <>
+                  {/* Admin override toggle - alltid synlig for admin */}
+                  <Alert className={`mb-6 ${
+                    adminOverride 
+                      ? 'bg-green-50 border-green-300' 
+                      : 'bg-blue-50 border-blue-300'
+                  }`}>
+                    <Shield className={`h-4 w-4 ${
+                      adminOverride ? 'text-green-600' : 'text-blue-600'
+                    }`} />
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        {adminOverride ? (
+                          <div className="text-green-900 font-medium">
+                            🔓 Admin override aktivert - Alle tidsbegrensninger er overstyrt
+                          </div>
+                        ) : (
+                          <div className="text-blue-900">
+                            <strong>Admin booking:</strong> Du kan aktivere override for å booke på opptatte tider
+                          </div>
+                        )}
+                        <div className="flex items-center space-x-2 pt-2">
+                          <Checkbox
+                            id="adminOverrideStep2"
+                            checked={adminOverride}
+                            onCheckedChange={(checked) => setAdminOverride(!!checked)}
+                          />
+                          <Label
+                            htmlFor="adminOverrideStep2"
+                            className="text-sm font-medium cursor-pointer flex items-center"
+                          >
+                            <Shield className="h-3 w-3 mr-1" />
+                            Admin override - Tillat booking uansett tilgjengelig tid
+                          </Label>
+                        </div>
                       </div>
-                    </div>
-                  </AlertDescription>
-                </Alert>
+                    </AlertDescription>
+                  </Alert>
+
+                  <DateTimeSelector
+                    selectedDate={bookingData.scheduledDate}
+                    selectedTime={bookingData.scheduledTime}
+                    totalDuration={bookingData.totalDuration}
+                    onDateChange={(date) => setBookingData(prev => ({ ...prev, scheduledDate: date }))}
+                    onTimeChange={(time) => setBookingData(prev => ({ ...prev, scheduledTime: time }))}
+                    isAdminBooking={isAdminBooking}
+                    adminOverride={adminOverride}
+                    businessHoursStart={businessHoursStart}
+                    businessHoursEnd={businessHoursEnd}
+                  />
+
+                  {/* SMS-valg for admin */}
+                  <Alert className="mt-6 bg-blue-50 border-blue-200">
+                    <Info className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-900">
+                      <div className="flex items-start space-x-3">
+                        <input
+                          type="checkbox"
+                          id="sendSms"
+                          checked={sendSms}
+                          onChange={(e) => setSendSms(e.target.checked)}
+                          className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <div className="flex-1">
+                          <label htmlFor="sendSms" className="cursor-pointer font-medium">
+                            Send SMS-bekreftelse til kunde
+                          </label>
+                          <p className="text-sm text-blue-700 mt-1">
+                            SMS sendes kun til mobilnummer (starter med 4 eller 9). 
+                            {bookingData.customerInfo.phone && (
+                              <>
+                                {' '}Telefonnummer: <strong>{bookingData.customerInfo.phone}</strong>
+                                {!/^[49]\d{7}$/.test(bookingData.customerInfo.phone.replace(/\s/g, '')) && (
+                                  <span className="text-orange-600"> (ikke et mobilnummer)</span>
+                                )}
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                </>
               )}
             </>
           )}
 
-          {/* Step 3: Date & Time */}
+          {/* Step 3: Confirmation (Admin) eller Date & Time (Normal) */}
           {currentStep === 3 && (
             <>
-              {/* Admin override toggle - alltid synlig for admin */}
-              {isAdminBooking && (
-                <Alert className={`mb-6 ${
-                  adminOverride 
-                    ? 'bg-green-50 border-green-300' 
-                    : 'bg-blue-50 border-blue-300'
-                }`}>
-                  <Shield className={`h-4 w-4 ${
-                    adminOverride ? 'text-green-600' : 'text-blue-600'
-                  }`} />
-                  <AlertDescription>
-                    <div className="space-y-2">
-                      {adminOverride ? (
-                        <div className="text-green-900 font-medium">
-                          🔓 Admin override aktivert - Alle tidsbegrensninger er overstyrt
-                        </div>
-                      ) : (
-                        <div className="text-blue-900">
-                          <strong>Admin booking:</strong> Du kan aktivere override for å booke på opptatte tider
-                        </div>
-                      )}
-                      <div className="flex items-center space-x-2 pt-2">
-                        <Checkbox
-                          id="adminOverrideStep3"
-                          checked={adminOverride}
-                          onCheckedChange={(checked) => setAdminOverride(!!checked)}
-                        />
-                        <Label
-                          htmlFor="adminOverrideStep3"
-                          className="text-sm font-medium cursor-pointer flex items-center"
-                        >
-                          <Shield className="h-3 w-3 mr-1" />
-                          Admin override - Tillat booking uansett tilgjengelig tid
-                        </Label>
-                      </div>
-                    </div>
-                  </AlertDescription>
-                </Alert>
+              {isAdminBooking ? (
+                // For admin: Bekreftelse (oppsummering)
+                <BookingSummary
+                  bookingData={bookingData}
+                  services={services}
+                  vehicleTypes={vehicleTypes}
+                  onNotesChange={(customerNotes) => 
+                    setBookingData(prev => ({ ...prev, customerNotes }))
+                  }
+                  selectedCompany={customerType === 'company' ? selectedCompany : undefined}
+                />
+              ) : (
+                // For private kunder: Dato & Tid
+                <>
+                  <DateTimeSelector
+                    selectedDate={bookingData.scheduledDate}
+                    selectedTime={bookingData.scheduledTime}
+                    totalDuration={bookingData.totalDuration}
+                    onDateChange={(date) => 
+                      setBookingData(prev => ({ ...prev, scheduledDate: date }))
+                    }
+                    onTimeChange={(time) => 
+                      setBookingData(prev => ({ ...prev, scheduledTime: time }))
+                    }
+                    isAdminBooking={false}
+                    adminOverride={false}
+                    businessHoursStart={businessHoursStart}
+                    businessHoursEnd={businessHoursEnd}
+                  />
+                </>
               )}
-              <DateTimeSelector
-                selectedDate={bookingData.scheduledDate}
-                selectedTime={bookingData.scheduledTime}
-                totalDuration={bookingData.totalDuration}
-                onDateChange={(date) => 
-                  setBookingData(prev => ({ ...prev, scheduledDate: date }))
-                }
-                onTimeChange={(time) => 
-                  setBookingData(prev => ({ ...prev, scheduledTime: time }))
-                }
-                isAdminBooking={isAdminBooking}
-                adminOverride={adminOverride}
-                businessHoursStart={businessHoursStart}
-                businessHoursEnd={businessHoursEnd}
-              />
             </>
           )}
 
@@ -661,6 +1036,7 @@ export function MultiBookingWizard({
               onNotesChange={(customerNotes) => 
                 setBookingData(prev => ({ ...prev, customerNotes }))
               }
+              selectedCompany={customerType === 'company' ? selectedCompany : undefined}
             />
           )}
 
@@ -677,14 +1053,14 @@ export function MultiBookingWizard({
         <Button
           variant="outline"
           onClick={() => setCurrentStep(currentStep - 1)}
-          disabled={currentStep === 1}
+          disabled={currentStep === (isAdminBooking ? 0 : 1)}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Forrige
         </Button>
 
         <div className="flex space-x-2">
-          {currentStep < 4 ? (
+          {((isAdminBooking && currentStep < 3) || (!isAdminBooking && currentStep < 4)) ? (
             <Button
               onClick={() => setCurrentStep(currentStep + 1)}
               disabled={!canProceedToStep(currentStep + 1)}
@@ -695,7 +1071,7 @@ export function MultiBookingWizard({
           ) : (
             <Button
               onClick={handleSubmit}
-              disabled={loading || !canProceedToStep(5)}
+              disabled={loading || !canProceedToStep(isAdminBooking ? 4 : 5)}
               className="bg-green-600 hover:bg-green-700"
             >
               {loading ? 'Sender bestilling...' : 'Bekreft bestilling'}

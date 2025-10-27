@@ -32,6 +32,7 @@ interface CustomerInfo {
 interface MultiBookingData {
   vehicles: BookingVehicleData[]
   customerInfo: CustomerInfo
+  companyId?: string  // Bedriftsbooking
   scheduledDate: string
   scheduledTime: string
   customerNotes?: string
@@ -417,6 +418,7 @@ export async function POST(request: NextRequest) {
     const booking = await prisma.booking.create({
       data: {
         userId: userId,
+        companyId: bookingData.companyId || null,  // Bedrifts-ID hvis bedriftsbooking
         scheduledDate: bookingDate,
         scheduledTime: bookingTime,
         totalDuration: bookingData.totalDuration,

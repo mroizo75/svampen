@@ -4,16 +4,18 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { ArrowLeft, CheckCircle } from 'lucide-react'
+import { ArrowLeft, CheckCircle, Building2 } from 'lucide-react'
 import Link from 'next/link'
 import CompleteBookingButton from '@/components/admin/complete-booking-button'
 import InvoiceActions from '@/components/admin/invoice-actions'
+import { CreateInvoiceButton } from '@/components/admin/create-invoice-button'
 
 async function getBooking(id: string) {
   return await prisma.booking.findUnique({
     where: { id },
     include: {
       user: true,
+      company: true,  // Inkluder bedriftsinformasjon
       bookingVehicles: {
         include: {
           vehicleType: true,
@@ -75,6 +77,23 @@ export default async function BookingDetailsPage({
           <Card>
             <CardHeader><CardTitle>Kunde & Booking</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              {booking.company && (
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-600 font-medium flex items-center">
+                    <Building2 className="h-4 w-4 mr-2" />
+                    Bedriftskunde
+                  </p>
+                  <p className="font-medium text-blue-900 mt-1">{booking.company.name}</p>
+                  {booking.company.orgNumber && (
+                    <p className="text-sm text-blue-700">Org.nr: {booking.company.orgNumber}</p>
+                  )}
+                  {booking.company.discountPercent && Number(booking.company.discountPercent) > 0 && (
+                    <p className="text-sm text-green-700 font-medium mt-1">
+                      Rabatt: {Number(booking.company.discountPercent)}%
+                    </p>
+                  )}
+                </div>
+              )}
               <div>
                 <p className="text-sm text-gray-600">Kunde</p>
                 <p className="font-medium">{booking.user.firstName} {booking.user.lastName}</p>
@@ -118,6 +137,25 @@ export default async function BookingDetailsPage({
               </div>
             </CardContent>
           </Card>
+
+          {/* Opprett faktura for bedriftskunder */}
+          {booking.company && booking.invoices.length === 0 && (
+            <Card className="border-green-200 bg-green-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  📄 Opprett faktura i Tripletex
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CreateInvoiceButton
+                  bookingId={booking.id}
+                  companyName={booking.company.name}
+                  totalAmount={Number(booking.totalPrice)}
+                  hasExistingInvoice={false}
+                />
+              </CardContent>
+            </Card>
+          )}
 
           {booking.invoices.length > 0 && (
             <Card className="border-blue-200 bg-blue-50">

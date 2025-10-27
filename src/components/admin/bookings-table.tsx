@@ -33,6 +33,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  Building2,
 } from 'lucide-react'
 
 interface BookingVehicle {
@@ -58,6 +59,10 @@ interface Booking {
     lastName: string
     email: string
   }
+  company?: {
+    name: string
+    discountPercent?: number
+  } | null
   bookingVehicles: BookingVehicle[]
 }
 
@@ -229,6 +234,12 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
               >
                 <TableCell>
                   <div>
+                    {booking.company && (
+                      <div className="text-xs text-blue-600 font-medium flex items-center mb-1">
+                        <Building2 className="h-3 w-3 mr-1" />
+                        {booking.company.name}
+                      </div>
+                    )}
                     <div className="font-medium">
                       {booking.user.firstName} {booking.user.lastName}
                     </div>

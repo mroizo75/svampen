@@ -12,7 +12,8 @@ import {
   DollarSign,
   CheckCircle,
   Info,
-  User
+  User,
+  Building2
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale'
@@ -61,6 +62,7 @@ interface BookingData {
   customerNotes: string
   totalPrice: number
   totalDuration: number
+  companyId?: string
 }
 
 interface BookingSummaryProps {
@@ -68,6 +70,7 @@ interface BookingSummaryProps {
   services: Service[]
   vehicleTypes: VehicleType[]
   onNotesChange: (notes: string) => void
+  selectedCompany?: any // Bedriftsinfo hvis bedriftskunde
 }
 
 export function BookingSummary({
@@ -75,6 +78,7 @@ export function BookingSummary({
   services,
   vehicleTypes,
   onNotesChange,
+  selectedCompany,
 }: BookingSummaryProps) {
   const getService = (serviceId: string) => {
     return services.find(s => s.id === serviceId)
@@ -163,31 +167,71 @@ export function BookingSummary({
       <Card className="bg-blue-50 border-blue-200">
         <CardHeader>
           <CardTitle className="flex items-center text-blue-800">
-            <User className="mr-2 h-5 w-5" />
-            Kunde informasjon
+            {selectedCompany ? (
+              <><Building2 className="mr-2 h-5 w-5" /> Bedriftskunde</>
+            ) : (
+              <><User className="mr-2 h-5 w-5" /> Kunde informasjon</>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <span className="text-sm text-blue-600">Navn:</span>
-              <p className="font-medium">{bookingData.customerInfo.firstName} {bookingData.customerInfo.lastName}</p>
-            </div>
-            <div>
-              <span className="text-sm text-blue-600">E-post:</span>
-              <p className="font-medium">{bookingData.customerInfo.email}</p>
-            </div>
-            <div>
-              <span className="text-sm text-blue-600">Telefon:</span>
-              <p className="font-medium">{bookingData.customerInfo.phone}</p>
-            </div>
-            {bookingData.customerInfo.createAccount && (
+          {selectedCompany ? (
+            // Bedriftskunde
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <span className="text-sm text-blue-600">Kontotype:</span>
-                <p className="font-medium">Ny konto opprettes</p>
+                <span className="text-sm text-blue-600">Bedrift:</span>
+                <p className="font-medium">{selectedCompany.name}</p>
               </div>
-            )}
-          </div>
+              <div>
+                <span className="text-sm text-blue-600">Org.nr:</span>
+                <p className="font-medium">{selectedCompany.orgNumber}</p>
+              </div>
+              <div>
+                <span className="text-sm text-blue-600">E-post:</span>
+                <p className="font-medium">{selectedCompany.contactEmail || bookingData.customerInfo.email}</p>
+              </div>
+              <div>
+                <span className="text-sm text-blue-600">Telefon:</span>
+                <p className="font-medium">{selectedCompany.contactPhone || bookingData.customerInfo.phone}</p>
+              </div>
+              {selectedCompany.discountPercent > 0 && (
+                <div>
+                  <span className="text-sm text-blue-600">Rabatt:</span>
+                  <p className="font-medium text-green-600">{selectedCompany.discountPercent}% (Fast avtale)</p>
+                </div>
+              )}
+              {selectedCompany.contactPerson && (
+                <div>
+                  <span className="text-sm text-blue-600">Kontaktperson:</span>
+                  <p className="font-medium">
+                    {selectedCompany.contactPerson.firstName} {selectedCompany.contactPerson.lastName}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            // Privatkunde
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <span className="text-sm text-blue-600">Navn:</span>
+                <p className="font-medium">{bookingData.customerInfo.firstName} {bookingData.customerInfo.lastName}</p>
+              </div>
+              <div>
+                <span className="text-sm text-blue-600">E-post:</span>
+                <p className="font-medium">{bookingData.customerInfo.email}</p>
+              </div>
+              <div>
+                <span className="text-sm text-blue-600">Telefon:</span>
+                <p className="font-medium">{bookingData.customerInfo.phone}</p>
+              </div>
+              {bookingData.customerInfo.createAccount && (
+                <div>
+                  <span className="text-sm text-blue-600">Kontotype:</span>
+                  <p className="font-medium">Ny konto opprettes</p>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -17,6 +17,7 @@ async function getBookings(page: number = 1) {
         take: ITEMS_PER_PAGE,
         include: {
           user: true,
+          company: true,  // Inkluder bedriftsinformasjon
           bookingVehicles: {
             include: {
               vehicleType: true,

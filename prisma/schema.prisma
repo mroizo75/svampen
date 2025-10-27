@@ -25,6 +25,9 @@ model User {
   // Relasjon til bookings
   bookings    Booking[]
   
+  // Relasjon til bedrifter (som kontaktperson)
+  companies   Company[]
+  
   @@map("users")
 }
 
@@ -32,6 +35,90 @@ model User {
 enum UserRole {
   USER
   ADMIN
+}
+
+// Bedriftskunder med fasteavtaler
+model Company {
+  id                  String   @id @default(cuid())
+  name                String   // Bedriftsnavn
+  orgNumber           String?  @unique // Organisasjonsnummer
+  
+  // Kontaktinformasjon
+  contactPersonId     String?  // Relasjon til User
+  contactPerson       User?    @relation(fields: [contactPersonId], references: [id], onDelete: SetNull)
+  contactEmail        String   // Primær e-post for bedriften
+  contactPhone        String?  // Telefon
+  
+  // Adresse
+  address             String?
+  postalCode          String?
+  city                String?
+  
+  // Avtaledetaljer
+  contractStartDate   DateTime? // Avtalens startdato
+  contractEndDate     DateTime? // Avtalens sluttdato (null = løpende)
+  discountPercent     Decimal?  @default(0) @db.Decimal(5, 2) // Rabatt i prosent
+  specialTerms        String?   @db.Text // Spesielle avtalevilkår
+  paymentTerms        String?   // Betalingsvilkår (f.eks. "30 dager netto")
+  invoiceEmail        String?   // E-post for faktura (hvis forskjellig fra kontakt)
+  
+  // Status
+  isActive            Boolean   @default(true)
+  notes               String?   @db.Text // Administrative notater
+  
+  // Timestamps
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  // Relasjoner
+  bookings            Booking[]
+  bookingTemplates    BookingTemplate[]
+  
+  @@map("companies")
+}
+
+// Booking-maler for bedriftskunder med faste avtaler
+model BookingTemplate {
+  id                  String   @id @default(cuid())
+  companyId           String
+  company             Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Mal-detaljer
+  name                String   // Beskrivende navn (f.eks. "Mandag morgen vask")
+  description         String?  @db.Text
+  
+  // Tidspunkt
+  dayOfWeek           Int?     // 0-6 (0 = søndag, 1 = mandag, etc.) for ukentlig
+  dayOfMonth          Int?     // 1-31 for månedlig
+  time                String   // HH:mm format (f.eks. "09:00")
+  
+  // Frekvens
+  frequency           TemplateFrequency @default(WEEKLY)
+  
+  // Kjøretøy og tjenester (JSON for fleksibilitet)
+  // Format: [{ vehicleTypeId: string, vehicleInfo: string, serviceIds: string[] }]
+  vehiclesConfig      Json
+  
+  // Notater
+  defaultNotes        String?  @db.Text
+  
+  // Status og innstillinger
+  isActive            Boolean  @default(true)
+  autoGenerate        Boolean  @default(false) // Auto-generer bookinger?
+  generateDaysAhead   Int?     @default(30) // Hvor mange dager fremover skal bookinger genereres?
+  lastGeneratedDate   DateTime? // Siste gang bookinger ble generert
+  
+  // Timestamps
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  @@map("booking_templates")
+}
+
+enum TemplateFrequency {
+  WEEKLY   // Hver uke
+  MONTHLY  // Hver måned
+  CUSTOM   // Egendefinert (for fremtidig bruk)
 }
 
 // Tjenester med kategorier
@@ -94,6 +181,7 @@ model ServicePrice {
 model Booking {
   id              String        @id @default(cuid())
   userId          String
+  companyId       String?       // Relasjon til bedrift (hvis bedriftsbooking)
   
   // Booking detaljer
   scheduledDate   DateTime
@@ -121,6 +209,7 @@ model Booking {
   
   // Relasjoner
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company         Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
   bookingVehicles BookingVehicle[]
   invoices        Invoice[]
   
@@ -193,18 +282,24 @@ model Invoice {
   bookingId       String
   invoiceNumber   String        @unique // Løpenummer: INV-2025-0001
   
+  // Tripletex integrasjon
+  tripletexId     Int?          @unique // ID fra Tripletex
+  tripletexUrl    String?       // Link til faktura i Tripletex
+  tripletexVoucher Int?         // Bilag-nummer i Tripletex
+  
   // Beløp
   amount          Decimal       @db.Decimal(10, 2)
   taxAmount       Decimal       @default(0) @db.Decimal(10, 2)
   totalAmount     Decimal       @db.Decimal(10, 2)
   
   // Status
-  status          InvoiceStatus @default(SENT)
+  status          InvoiceStatus @default(DRAFT)
   
   // Datoer
   issuedDate      DateTime      @default(now())
   dueDate         DateTime      // Forfallsdato
   paidDate        DateTime?     // Når fakturaen ble betalt
+  sentDate        DateTime?     // Når fakturaen ble sendt til kunde
   
   // Merknader
   notes           String?       @db.Text
