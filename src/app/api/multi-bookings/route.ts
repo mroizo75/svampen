@@ -63,66 +63,68 @@ export async function POST(request: NextRequest) {
       })
       // Check if user wants to create account
       if (bookingData.customerInfo.createAccount) {
+        // KRITISK: Hvis e-post er placeholder for admin-booking, generer UNIK e-post
+        let emailToUse = bookingData.customerInfo.email
+        const isPlaceholderEmail = !emailToUse || emailToUse.trim() === '' || emailToUse === '*' || emailToUse.includes('*')
+        
+        if (isPlaceholderEmail && bookingData.isAdminBooking) {
+          // Generer unik placeholder e-post for admin-booking
+          const timestamp = Date.now()
+          const nameSlug = `${bookingData.customerInfo.firstName}-${bookingData.customerInfo.lastName}`
+            .toLowerCase()
+            .replace(/[^a-z0-9-]/g, '')
+          emailToUse = `noepost.${nameSlug}.${timestamp}@svampen.local`
+          console.log('⚠️ Placeholder e-post oppdaget (create account) - genererer unik e-post:', emailToUse)
+        } else if (isPlaceholderEmail && !bookingData.isAdminBooking) {
+          // Kunde-booking må ha gyldig e-post
+          return NextResponse.json(
+            { message: 'En gyldig e-postadresse er påkrevd' },
+            { status: 400 }
+          )
+        }
+        
         // Check if email already exists
         const existingUser = await prisma.user.findUnique({
-          where: { email: bookingData.customerInfo.email }
+          where: { email: emailToUse }
         })
 
         if (existingUser) {
-          // If admin booking and user exists, update user info if changed
-          if (bookingData.isAdminBooking) {
-            // Check if admin has updated customer info
-            const needsUpdate = 
-              existingUser.firstName !== bookingData.customerInfo.firstName ||
-              existingUser.lastName !== bookingData.customerInfo.lastName ||
-              existingUser.phone !== bookingData.customerInfo.phone
-            
-            if (needsUpdate) {
-              // Update existing user with new info from admin
-              const updatedUser = await prisma.user.update({
-                where: { id: existingUser.id },
-                data: {
-                  firstName: bookingData.customerInfo.firstName,
-                  lastName: bookingData.customerInfo.lastName,
-                  phone: bookingData.customerInfo.phone || existingUser.phone,
-                }
-              })
-              
-              userId = updatedUser.id
-              user = {
-                id: updatedUser.id,
-                email: updatedUser.email,
-                name: `${updatedUser.firstName} ${updatedUser.lastName}`,
-                firstName: updatedUser.firstName,
-                lastName: updatedUser.lastName,
-                phone: updatedUser.phone,
-                role: updatedUser.role,
-              }
-              
-              console.log('🔄 Oppdaterte eksisterende kundes informasjon:', {
-                email: updatedUser.email,
-                oldName: `${existingUser.firstName} ${existingUser.lastName}`,
-                newName: `${updatedUser.firstName} ${updatedUser.lastName}`
-              })
-            } else {
-              // Use existing user as-is
-              userId = existingUser.id
-              user = {
-                id: existingUser.id,
-                email: existingUser.email,
-                name: `${existingUser.firstName} ${existingUser.lastName}`,
-                firstName: existingUser.firstName,
-                lastName: existingUser.lastName,
-                phone: existingUser.phone,
-                role: existingUser.role,
-              }
-            }
-          } else {
+          // KRITISK: ALDRI oppdater eksisterende brukers informasjon!
+          // Dette ville overskrive kundedata og føre til at bookinger viser feil kunde.
+          // Hvis admin prøver å booke med en e-post som allerede finnes,
+          // men med annet navn - da MÅ de bruke en annen e-post.
+          
+          const isDifferentCustomer = 
+            existingUser.firstName !== bookingData.customerInfo.firstName ||
+            existingUser.lastName !== bookingData.customerInfo.lastName
+          
+          if (isDifferentCustomer && bookingData.isAdminBooking) {
+            // Admin prøver å booke for en ANNEN kunde med SAMME e-post
             return NextResponse.json(
-              { message: 'En bruker med denne e-posten eksisterer allerede. Vennligst logg inn.' },
+              { 
+                message: `E-posten ${emailToUse} tilhører allerede kunden "${existingUser.firstName} ${existingUser.lastName}". Hvis dette er en ny kunde, vennligst bruk en annen e-postadresse.`,
+                existingCustomer: `${existingUser.firstName} ${existingUser.lastName}`
+              },
               { status: 409 }
             )
           }
+          
+          // Bruk eksisterende bruker AS-IS (samme kunde)
+          userId = existingUser.id
+          user = {
+            id: existingUser.id,
+            email: existingUser.email,
+            name: `${existingUser.firstName} ${existingUser.lastName}`,
+            firstName: existingUser.firstName,
+            lastName: existingUser.lastName,
+            phone: existingUser.phone,
+            role: existingUser.role,
+          }
+          
+          console.log('✅ Bruker eksisterende kunde:', {
+            email: existingUser.email,
+            name: `${existingUser.firstName} ${existingUser.lastName}`
+          })
         } else {
           // Create new user
           // For admin bookings, password is not required (will be set to random)
@@ -146,7 +148,7 @@ export async function POST(request: NextRequest) {
         try {
           const newUser = await prisma.user.create({
             data: {
-              email: bookingData.customerInfo.email,
+              email: emailToUse,  // Bruker den unike e-posten (kan være generert)
               password: hashedPassword,
               firstName: bookingData.customerInfo.firstName,
               lastName: bookingData.customerInfo.lastName,
@@ -175,69 +177,57 @@ export async function POST(request: NextRequest) {
         }
       } else {
         // Guest booking (no account creation) - create temporary user or handle differently
+        // KRITISK: Hvis e-post er placeholder (* eller lignende), generer UNIK e-post
+        let emailToUse = bookingData.customerInfo.email
+        const isPlaceholderEmail = !emailToUse || emailToUse.trim() === '' || emailToUse === '*' || emailToUse.includes('*')
+        
+        if (isPlaceholderEmail) {
+          // Generer unik placeholder e-post basert på kundenavn og timestamp
+          const timestamp = Date.now()
+          const nameSlug = `${bookingData.customerInfo.firstName}-${bookingData.customerInfo.lastName}`
+            .toLowerCase()
+            .replace(/[^a-z0-9-]/g, '')
+          emailToUse = `noepost.${nameSlug}.${timestamp}@svampen.local`
+          console.log('⚠️ Placeholder e-post oppdaget - genererer unik e-post:', emailToUse)
+        }
+        
         const existingUser = await prisma.user.findUnique({
-          where: { email: bookingData.customerInfo.email }
+          where: { email: emailToUse }
         })
 
         if (existingUser) {
-          // If admin booking, update user info if changed
-          if (bookingData.isAdminBooking) {
-            const needsUpdate = 
-              existingUser.firstName !== bookingData.customerInfo.firstName ||
-              existingUser.lastName !== bookingData.customerInfo.lastName ||
-              existingUser.phone !== bookingData.customerInfo.phone
-            
-            if (needsUpdate) {
-              const updatedUser = await prisma.user.update({
-                where: { id: existingUser.id },
-                data: {
-                  firstName: bookingData.customerInfo.firstName,
-                  lastName: bookingData.customerInfo.lastName,
-                  phone: bookingData.customerInfo.phone || existingUser.phone,
-                }
-              })
-              
-              userId = updatedUser.id
-              user = {
-                id: updatedUser.id,
-                email: updatedUser.email,
-                name: `${updatedUser.firstName} ${updatedUser.lastName}`,
-                firstName: updatedUser.firstName,
-                lastName: updatedUser.lastName,
-                phone: updatedUser.phone,
-                role: updatedUser.role,
-              }
-              
-              console.log('🔄 Oppdaterte eksisterende kundes informasjon (guest mode):', {
-                email: updatedUser.email,
-                oldName: `${existingUser.firstName} ${existingUser.lastName}`,
-                newName: `${updatedUser.firstName} ${updatedUser.lastName}`
-              })
-            } else {
-              userId = existingUser.id
-              user = {
-                id: existingUser.id,
-                email: existingUser.email,
-                name: `${existingUser.firstName} ${existingUser.lastName}`,
-                firstName: existingUser.firstName,
-                lastName: existingUser.lastName,
-                phone: existingUser.phone,
-                role: existingUser.role,
-              }
-            }
-          } else {
-            // Not admin booking, use existing user as-is
-            userId = existingUser.id
-            user = {
-              id: existingUser.id,
-              email: existingUser.email,
-              name: `${existingUser.firstName} ${existingUser.lastName}`,
-              firstName: existingUser.firstName,
-              lastName: existingUser.lastName,
-              phone: existingUser.phone,
-              role: existingUser.role,
-            }
+          // KRITISK: ALDRI oppdater eksisterende brukers informasjon!
+          const isDifferentCustomer = 
+            existingUser.firstName !== bookingData.customerInfo.firstName ||
+            existingUser.lastName !== bookingData.customerInfo.lastName
+          
+          if (isDifferentCustomer && bookingData.isAdminBooking) {
+            // Admin prøver å booke for en ANNEN kunde med SAMME e-post
+            return NextResponse.json(
+              { 
+                message: `E-posten ${emailToUse} tilhører allerede kunden "${existingUser.firstName} ${existingUser.lastName}". Hvis dette er en ny kunde, vennligst bruk en annen e-postadresse.`,
+                existingCustomer: `${existingUser.firstName} ${existingUser.lastName}`
+              },
+              { status: 409 }
+            )
           }
+          
+          // Bruk eksisterende bruker AS-IS
+          userId = existingUser.id
+          user = {
+            id: existingUser.id,
+            email: existingUser.email,
+            name: `${existingUser.firstName} ${existingUser.lastName}`,
+            firstName: existingUser.firstName,
+            lastName: existingUser.lastName,
+            phone: existingUser.phone,
+            role: existingUser.role,
+          }
+          
+          console.log('✅ Bruker eksisterende kunde (guest):', {
+            email: existingUser.email,
+            name: `${existingUser.firstName} ${existingUser.lastName}`
+          })
         } else {
           // Create guest user (with random password for security)
           try {
@@ -246,7 +236,7 @@ export async function POST(request: NextRequest) {
             
             const guestUser = await prisma.user.create({
               data: {
-                email: bookingData.customerInfo.email,
+                email: emailToUse,  // Bruker den unike e-posten (kan være generert)
                 password: hashedPassword,
                 firstName: bookingData.customerInfo.firstName,
                 lastName: bookingData.customerInfo.lastName,
