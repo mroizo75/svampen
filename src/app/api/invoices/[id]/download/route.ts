@@ -89,9 +89,9 @@ export async function GET(
     let yPos = 72
     if (invoice.booking.company) {
       // Bedriftskunde
-      pdf.setFont(undefined, 'bold')
+      pdf.setFont('helvetica', 'bold')
       pdf.text(invoice.booking.company.name, 20, yPos)
-      pdf.setFont(undefined, 'normal')
+      pdf.setFont('helvetica', 'normal')
       yPos += 6
       
       if (invoice.booking.company.orgNumber) {
@@ -107,9 +107,9 @@ export async function GET(
       pdf.text(invoice.booking.company.contactEmail, 20, yPos)
     } else {
       // Privatkunde
-      pdf.setFont(undefined, 'bold')
+      pdf.setFont('helvetica', 'bold')
       pdf.text(`${invoice.booking.user.firstName} ${invoice.booking.user.lastName}`, 20, yPos)
-      pdf.setFont(undefined, 'normal')
+      pdf.setFont('helvetica', 'normal')
       yPos += 6
       
       pdf.text(invoice.booking.user.email, 20, yPos)
@@ -182,10 +182,10 @@ export async function GET(
 
     // Total
     pdf.setFontSize(14)
-    pdf.setFont(undefined, 'bold')
+    pdf.setFont('helvetica', 'bold')
     pdf.text('Totalt å betale:', leftAlign, totalY, { align: 'right' })
     pdf.text(`${Number(invoice.totalAmount).toLocaleString('nb-NO')} kr`, rightAlign, totalY, { align: 'right' })
-    pdf.setFont(undefined, 'normal')
+    pdf.setFont('helvetica', 'normal')
 
     // --- BETALINGSINFORMASJON ---
     totalY += 20

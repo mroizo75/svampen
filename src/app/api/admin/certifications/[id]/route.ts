@@ -7,7 +7,7 @@ import { authOptions } from "@/lib/auth";
 // PATCH - Oppdater sertifisering (f.eks. tilbakekall)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -19,6 +19,7 @@ export async function PATCH(
       );
     }
 
+    const { id } = await params;
     const data = await request.json();
 
     const updateData: any = {};
@@ -40,7 +41,7 @@ export async function PATCH(
     }
 
     const certification = await prisma.userEquipmentCertification.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         user: {
@@ -69,7 +70,7 @@ export async function PATCH(
 // DELETE - Slett sertifisering
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -81,8 +82,9 @@ export async function DELETE(
       );
     }
 
+    const { id } = await params;
     await prisma.userEquipmentCertification.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ message: "Sertifisering slettet" });

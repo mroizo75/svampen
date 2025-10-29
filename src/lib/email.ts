@@ -514,3 +514,38 @@ export async function sendInvoiceEmail(data: InvoiceEmailData) {
     return { success: false, error }
   }
 }
+
+// Generic sendEmail function for custom emails
+interface SendEmailOptions {
+  to: string | string[]
+  subject: string
+  html: string
+  from?: string
+}
+
+export async function sendEmail(options: SendEmailOptions) {
+  try {
+    if (!process.env.RESEND_API_KEY) {
+      console.error('❌ Kan ikke sende e-post: RESEND_API_KEY mangler')
+      return { success: false, error: 'RESEND_API_KEY er ikke konfigurert' }
+    }
+
+    console.log(`📧 Sender e-post til ${options.to}...`)
+    
+    const result = await resend.emails.send({
+      from: options.from || 'Svampen <noreply@innut.no>',
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+    })
+
+    console.log(`✅ E-post sendt til ${options.to}`)
+    return { success: true, data: result }
+  } catch (error) {
+    console.error('❌ Error sending email:', error)
+    if (error instanceof Error) {
+      console.error('Error message:', error.message)
+    }
+    return { success: false, error }
+  }
+}

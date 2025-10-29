@@ -1,5 +1,5 @@
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import WorkshopCalendarView from '@/components/workshop/workshop-calendar-view'
@@ -56,8 +56,8 @@ async function getBookings() {
 async function getBusinessHours() {
   const settings = await prisma.adminSettings.findFirst()
   return {
-    start: settings?.business_hours_start || '08:00',
-    end: settings?.business_hours_end || '16:00',
+    start: settings?.value || '08:00',
+    end: settings?.value || '16:00',
   }
 }
 
@@ -104,7 +104,7 @@ export default async function VerkstedPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <WorkshopCalendarView
-            bookings={bookings}
+            bookings={bookings as any}
             businessHoursStart={businessHours.start}
             businessHoursEnd={businessHours.end}
           />

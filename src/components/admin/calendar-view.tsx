@@ -139,7 +139,7 @@ export default function CalendarView({
         color: 'white',
         border: '2px solid white',
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'column' as const,
         fontSize: '13px',
         padding: '6px 8px',
         fontWeight: '500',

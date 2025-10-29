@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
           },
           include: {
             provider: true,
+            certifications: true,
           },
           orderBy: {
             trainingDate: 'desc',

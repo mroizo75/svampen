@@ -23,7 +23,7 @@ export default async function AnsattLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AnsattHeader user={session.user} />
+      <AnsattHeader user={session.user as any} />
       <div className="flex">
         <AnsattSidebar />
         <main className="flex-1">
