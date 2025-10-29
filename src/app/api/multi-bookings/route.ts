@@ -497,10 +497,33 @@ export async function POST(request: NextRequest) {
         ? bookingData.sendSms === true 
         : true // Default true for kunde-bookinger
       
+      console.log('📱 SMS Debug:', {
+        isAdminBooking: bookingData.isAdminBooking,
+        sendSmsFlag: bookingData.sendSms,
+        shouldSendSms,
+        phone: bookingData.customerInfo.phone,
+        hasPhone: !!bookingData.customerInfo.phone
+      })
+      
       if (shouldSendSms && bookingData.customerInfo.phone) {
+        // Fjern alle mellomrom og spesialtegn, behold kun siffer og eventuelt +
+        let phoneDigits = bookingData.customerInfo.phone.replace(/[\s\-()]/g, '')
+        
+        // Fjern +47 eller 47 prefix hvis det finnes
+        if (phoneDigits.startsWith('+47')) {
+          phoneDigits = phoneDigits.substring(3)
+        } else if (phoneDigits.startsWith('47') && phoneDigits.length === 10) {
+          phoneDigits = phoneDigits.substring(2)
+        }
+        
         // Sjekk om det er et norsk mobilnummer (starter med 4 eller 9, og er 8 siffer)
-        const phoneDigits = bookingData.customerInfo.phone.replace(/\s/g, '')
         const isMobileNumber = /^[49]\d{7}$/.test(phoneDigits)
+        
+        console.log('📱 Phone validation:', {
+          original: bookingData.customerInfo.phone,
+          cleaned: phoneDigits,
+          isMobileNumber
+        })
         
         if (isMobileNumber) {
           const smsResult = await sendBookingConfirmationSMS({
@@ -511,15 +534,17 @@ export async function POST(request: NextRequest) {
             bookingId: booking.id,
           })
           if (!smsResult.success) {
-            console.error('Failed to send confirmation SMS:', smsResult.error)
+            console.error('❌ Failed to send confirmation SMS:', smsResult.error)
           } else {
             console.log(`✅ SMS confirmation sent to mobile number: ${bookingData.customerInfo.phone}`)
           }
         } else {
-          console.log(`ℹ️ Skipping SMS - not a mobile number: ${bookingData.customerInfo.phone}`)
+          console.log(`ℹ️ Skipping SMS - not a mobile number: ${bookingData.customerInfo.phone} (digits: ${phoneDigits})`)
         }
       } else if (bookingData.isAdminBooking && !bookingData.sendSms) {
         console.log('ℹ️ SMS skipped - admin chose not to send SMS')
+      } else if (!bookingData.customerInfo.phone) {
+        console.log('ℹ️ SMS skipped - no phone number provided')
       }
     } catch (emailError) {
       // Vi logger feilen, men lar ikke e-post feil stoppe booking prosessen
