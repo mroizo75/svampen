@@ -899,9 +899,19 @@ export function MultiBookingWizard({
                             {bookingData.customerInfo.phone && (
                               <>
                                 {' '}Telefonnummer: <strong>{bookingData.customerInfo.phone}</strong>
-                                {!/^[49]\d{7}$/.test(bookingData.customerInfo.phone.replace(/\s/g, '')) && (
-                                  <span className="text-orange-600"> (ikke et mobilnummer)</span>
-                                )}
+                                {(() => {
+                                  // Samme validering som backend: fjern +47, 47 prefix og spesialtegn
+                                  let phoneDigits = bookingData.customerInfo.phone.replace(/[\s\-()]/g, '')
+                                  if (phoneDigits.startsWith('+47')) {
+                                    phoneDigits = phoneDigits.substring(3)
+                                  } else if (phoneDigits.startsWith('47') && phoneDigits.length === 10) {
+                                    phoneDigits = phoneDigits.substring(2)
+                                  }
+                                  const isMobileNumber = /^[49]\d{7}$/.test(phoneDigits)
+                                  return !isMobileNumber && (
+                                    <span className="text-orange-600"> (ikke et mobilnummer - SMS sendes ikke)</span>
+                                  )
+                                })()}
                               </>
                             )}
                           </p>
