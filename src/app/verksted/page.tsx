@@ -54,10 +54,20 @@ async function getBookings() {
 }
 
 async function getBusinessHours() {
-  const settings = await prisma.adminSettings.findFirst()
+  const settings = await prisma.adminSettings.findMany({
+    where: {
+      key: {
+        in: ['businessHoursStart', 'businessHoursEnd']
+      }
+    }
+  })
+  
+  const startSetting = settings.find(s => s.key === 'businessHoursStart')
+  const endSetting = settings.find(s => s.key === 'businessHoursEnd')
+  
   return {
-    start: settings?.value || '08:00',
-    end: settings?.value || '16:00',
+    start: startSetting?.value || '08:00',
+    end: endSetting?.value || '17:00',
   }
 }
 
