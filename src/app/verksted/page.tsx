@@ -84,6 +84,20 @@ export default async function VerkstedPage() {
     getBusinessHours(),
   ])
 
+  // Serialize Decimal to Number for client component
+  const serializedBookings = bookings.map(booking => ({
+    ...booking,
+    totalPrice: Number(booking.totalPrice),
+    bookingVehicles: booking.bookingVehicles.map(vehicle => ({
+      ...vehicle,
+      bookingServices: vehicle.bookingServices.map(service => ({
+        ...service,
+        unitPrice: Number(service.unitPrice),
+        totalPrice: Number(service.totalPrice),
+      })),
+    })),
+  }))
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -99,7 +113,7 @@ export default async function VerkstedPage() {
             <div className="text-right">
               <p className="text-sm text-gray-600">Dagens bestillinger</p>
               <p className="text-2xl font-bold text-blue-600">
-                {bookings.filter(b => {
+                {serializedBookings.filter(b => {
                   const bookingDate = new Date(b.scheduledDate)
                   const today = new Date()
                   return bookingDate.toDateString() === today.toDateString()
@@ -114,16 +128,16 @@ export default async function VerkstedPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <WorkshopCalendarView
-            bookings={bookings as any}
+            bookings={serializedBookings as any}
             businessHoursStart={businessHours.start}
             businessHoursEnd={businessHours.end}
           />
         </div>
       </main>
 
-      {/* Auto-refresh notice */}
-      <div className="fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
-        🔄 Siden oppdaterer automatisk hvert 5. minutt
+      {/* Live update notice */}
+      <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
+        🔴 LIVE • Oppdateres automatisk
       </div>
     </div>
   )

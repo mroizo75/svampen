@@ -1,6 +1,6 @@
 'use client'
 
-import { Calendar, momentLocalizer, Event, View } from 'react-big-calendar'
+import { Calendar, momentLocalizer, Event } from 'react-big-calendar'
 import moment from 'moment'
 import 'moment/locale/nb'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
@@ -61,7 +61,7 @@ interface CalendarEvent extends Event {
     status: string
     customerName: string
     companyName?: string
-    vehicleInfo: string[]  // Array med kjøretøyinfo (regnr/VIN)
+    vehicleInfo: string[]
     vehicleCount: number
     totalPrice: number
     duration: number
@@ -83,26 +83,42 @@ export default function WorkshopCalendarView({
   businessHoursEnd = '16:00' 
 }: WorkshopCalendarViewProps) {
   const router = useRouter()
-  const [view, setView] = useState<View>('week')
+  const [view, setView] = useState<'work_week' | 'day'>('work_week')
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
 
-  // Auto-refresh hver 5. minutt
+  // SSE for sanntidsoppdateringer
   useEffect(() => {
-    const interval = setInterval(() => {
-      router.refresh()
-    }, 5 * 60 * 1000) // 5 minutter
-
-    return () => clearInterval(interval)
+    console.log('🔌 Kobler til SSE for booking-oppdateringer...')
+    
+    const eventSource = new EventSource('/api/bookings/stream')
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        if (data.type === 'booking_update') {
+          console.log('✨ Booking-oppdatering mottatt, oppdaterer kalender...')
+          router.refresh()
+        }
+      } catch (error) {
+        // Ignorer heartbeat meldinger
+      }
+    }
+    
+    eventSource.onerror = (error) => {
+      console.error('❌ SSE connection error:', error)
+      eventSource.close()
+    }
+    
+    return () => {
+      console.log('🔌 Kobler fra SSE')
+      eventSource.close()
+    }
   }, [router])
 
-  // Parse åpningstider
-  const [startHour, startMinute] = businessHoursStart.split(':').map(Number)
-  const [endHour, endMinute] = businessHoursEnd.split(':').map(Number)
-  
-  // Kalender min/max tider
-  const calendarMinTime = new Date(2025, 0, 1, Math.max(0, startHour - 1), 0)
-  const calendarMaxTime = new Date(2025, 0, 1, Math.min(23, endHour + 1), 0)
+  // Parse åpningstider - fast 07:00-15:00 for verksted
+  const calendarMinTime = new Date(2025, 0, 1, 7, 0)
+  const calendarMaxTime = new Date(2025, 0, 1, 16, 0)  // Viser til 15:00 (må sette til 16 for å inkludere 15:00-timen)
 
   // Konverter bookinger til kalender-events
   const events: CalendarEvent[] = bookings.map(booking => {
@@ -119,25 +135,20 @@ export default function WorkshopCalendarView({
     
     const endTime = new Date(startTime.getTime() + booking.totalDuration * 60000)
 
-    // Samle kjøretøyinfo (regnr/VIN) fra vehicleInfo feltet
     const vehicleInfo: string[] = booking.bookingVehicles
       .map(v => v.vehicleInfo)
       .filter((info): info is string => !!info)
       .map(info => {
-        // Parse vehicleInfo som kan være i format "Regnr: ABC123" eller "VIN: XYZ"
         const match = info.match(/(?:Regnr|Reg\.nr|VIN):\s*([A-Za-z0-9]+)/i)
         return match ? match[1] : info
       })
 
     const customerName = booking.company 
-      ? booking.company.name 
+      ? booking.company.name
       : `${booking.user.firstName} ${booking.user.lastName}`
 
     return {
-      id: booking.id,
-      title: booking.company 
-        ? `${booking.company.name} ${vehicleInfo.length > 0 ? `- ${vehicleInfo.join(', ')}` : ''}`
-        : `${booking.user.firstName} ${booking.user.lastName}`,
+      title: `${customerName} - ${vehicleInfo[0] || booking.bookingVehicles.length + ' kjøretøy'}`,
       start: startTime,
       end: endTime,
       resource: {
@@ -190,7 +201,6 @@ export default function WorkshopCalendarView({
     }
   }
 
-  // Custom event-wrapper for bedre visning av overlappende events
   const EventComponent = ({ event }: { event: any }) => {
     const hours = Math.floor(event.resource.duration / 60)
     const minutes = event.resource.duration % 60
@@ -224,9 +234,9 @@ export default function WorkshopCalendarView({
         endAccessor="end"
         style={{ height: '100%' }}
         view={view}
-        onView={setView}
-        views={['month', 'week', 'day']}
-        defaultView="week"
+        onView={(newView) => setView(newView as 'work_week' | 'day')}
+        views={['work_week', 'day']}
+        defaultView="work_week"
         min={calendarMinTime}
         max={calendarMaxTime}
         eventPropGetter={eventStyleGetter}
@@ -234,7 +244,7 @@ export default function WorkshopCalendarView({
           event: EventComponent as any,
         }}
         onSelectEvent={handleSelectEvent}
-        selectable={false}  // Verksted kan ikke lage nye bookinger
+        selectable={false}
         step={30}
         timeslots={2}
         popup
@@ -243,10 +253,8 @@ export default function WorkshopCalendarView({
           next: 'Neste',
           previous: 'Forrige',
           today: 'I dag',
-          month: 'Måned',
-          week: 'Uke',
+          work_week: 'Arbeidsuke',
           day: 'Dag',
-          agenda: 'Agenda',
           date: 'Dato',
           time: 'Tid',
           event: 'Booking',
@@ -258,158 +266,119 @@ export default function WorkshopCalendarView({
       {/* Booking Details Dialog */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">
-              Booking Detaljer
-            </DialogTitle>
-            <DialogDescription>
-              Fullstendig informasjon om bestillingen
-            </DialogDescription>
-          </DialogHeader>
-
           {selectedEvent && (
-            <div className="space-y-6">
-              {/* Status Badge */}
-              <div className="flex items-center space-x-2">
-                <Badge 
-                  variant={
-                    selectedEvent.resource.status === 'CONFIRMED' ? 'default' : 
-                    selectedEvent.resource.status === 'IN_PROGRESS' ? 'secondary' : 
-                    'default'
-                  }
-                  className="text-sm"
-                >
-                  {selectedEvent.resource.status === 'CONFIRMED' && '✓ Bekreftet'}
-                  {selectedEvent.resource.status === 'IN_PROGRESS' && '⚙️ I gang'}
-                  {selectedEvent.resource.status === 'COMPLETED' && '✅ Fullført'}
-                </Badge>
-              </div>
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-2xl flex items-center gap-2">
+                  <User className="h-6 w-6" />
+                  Booking Detaljer
+                </DialogTitle>
+                <DialogDescription>
+                  Booking ID: {selectedEvent.resource.id}
+                </DialogDescription>
+              </DialogHeader>
 
-              {/* Kunde/Bedrift Info */}
-              <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
-                {selectedEvent.resource.companyName ? (
-                  <>
-                    <div className="flex items-center space-x-2">
-                      <Building2 className="h-5 w-5 text-gray-600" />
-                      <div>
-                        <p className="text-sm text-gray-600">Bedrift</p>
-                        <p className="font-semibold text-lg">{selectedEvent.resource.companyName}</p>
-                      </div>
-                    </div>
-                    {selectedEvent.resource.fullBooking.company?.orgNumber && (
-                      <p className="text-sm text-gray-600 ml-7">
-                        Org.nr: {selectedEvent.resource.fullBooking.company.orgNumber}
+              <div className="space-y-6 mt-4">
+                {/* Status Badge */}
+                <div>
+                  <Badge 
+                    variant={
+                      selectedEvent.resource.status === 'CONFIRMED' ? 'default' :
+                      selectedEvent.resource.status === 'IN_PROGRESS' ? 'secondary' :
+                      selectedEvent.resource.status === 'COMPLETED' ? 'default' :
+                      'destructive'
+                    }
+                    className="text-sm"
+                  >
+                    {selectedEvent.resource.status === 'CONFIRMED' && '✓ Bekreftet'}
+                    {selectedEvent.resource.status === 'IN_PROGRESS' && '⚙️ Pågår'}
+                    {selectedEvent.resource.status === 'COMPLETED' && '✓ Fullført'}
+                    {selectedEvent.resource.status === 'NO_SHOW' && '✗ Møtte ikke opp'}
+                  </Badge>
+                </div>
+
+                {/* Kunde Info */}
+                <div className="border rounded-lg p-4 space-y-2">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    {selectedEvent.resource.companyName ? <Building2 className="h-5 w-5" /> : <User className="h-5 w-5" />}
+                    Kundeinformasjon
+                  </h3>
+                  <div className="space-y-1 text-sm">
+                    <p><strong>Navn:</strong> {selectedEvent.resource.customerName}</p>
+                    {selectedEvent.resource.phone && (
+                      <p className="flex items-center gap-2">
+                        <Phone className="h-4 w-4" />
+                        {selectedEvent.resource.phone}
                       </p>
                     )}
-                  </>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <User className="h-5 w-5 text-gray-600" />
-                    <div>
-                      <p className="text-sm text-gray-600">Privatkunde</p>
-                      <p className="font-semibold text-lg">{selectedEvent.resource.customerName}</p>
-                    </div>
+                    <p className="flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      {selectedEvent.resource.email}
+                    </p>
                   </div>
-                )}
-
-                <div className="flex items-center space-x-2 ml-7">
-                  <Mail className="h-4 w-4 text-gray-600" />
-                  <p className="text-sm">{selectedEvent.resource.email}</p>
                 </div>
 
-                {selectedEvent.resource.phone && (
-                  <div className="flex items-center space-x-2 ml-7">
-                    <Phone className="h-4 w-4 text-gray-600" />
-                    <p className="text-sm">{selectedEvent.resource.phone}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Tid Info */}
-              <div className="space-y-2 bg-blue-50 p-4 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-5 w-5 text-blue-600" />
-                  <p className="font-semibold">Tidspunkt</p>
-                </div>
-                <p className="ml-7 text-lg">
-                  {selectedEvent.start?.toLocaleDateString('nb-NO', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}
-                </p>
-                <p className="ml-7 text-xl font-bold text-blue-600">
-                  {selectedEvent.start?.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })} - {' '}
-                  {selectedEvent.end?.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
-                </p>
-                <p className="ml-7 text-sm text-gray-600">
-                  Varighet: {Math.floor(selectedEvent.resource.duration / 60)}t {selectedEvent.resource.duration % 60}min
-                </p>
-              </div>
-
-              {/* Kjøretøy Info - VIKTIG FOR VERKSTED */}
-              <div className="space-y-3 bg-green-50 p-4 rounded-lg border-2 border-green-200">
-                <div className="flex items-center space-x-2">
-                  <Car className="h-5 w-5 text-green-600" />
-                  <p className="font-semibold text-lg">Kjøretøy ({selectedEvent.resource.vehicleCount})</p>
-                </div>
-                
-                {selectedEvent.resource.fullBooking.bookingVehicles.map((vehicle, idx) => (
-                  <div key={idx} className="ml-7 space-y-2 pb-3 border-b last:border-b-0">
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold text-base">{vehicle.vehicleType.name}</p>
-                    </div>
-                    
-                    {/* VIS REGNR/VIN PROMINENTLY */}
-                    {vehicle.vehicleInfo && (
-                      <div className="bg-yellow-100 border-2 border-yellow-400 p-3 rounded-md">
-                        <p className="text-xs text-yellow-800 font-semibold uppercase">Kjøretøyinfo</p>
-                        <p className="text-lg font-bold text-yellow-900">{vehicle.vehicleInfo}</p>
+                {/* Kjøretøy */}
+                <div className="border rounded-lg p-4 space-y-3">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <Car className="h-5 w-5" />
+                    Kjøretøy ({selectedEvent.resource.vehicleCount})
+                  </h3>
+                  {selectedEvent.resource.fullBooking.bookingVehicles.map((vehicle, idx) => (
+                    <div key={idx} className="bg-gray-50 p-3 rounded space-y-2">
+                      <p className="font-medium">{vehicle.vehicleType.name}</p>
+                      {vehicle.vehicleInfo && (
+                        <p className="text-sm text-gray-600">{vehicle.vehicleInfo}</p>
+                      )}
+                      {vehicle.vehicleNotes && (
+                        <p className="text-sm text-gray-500 italic">{vehicle.vehicleNotes}</p>
+                      )}
+                      
+                      {/* Tjenester */}
+                      <div className="mt-2 space-y-1">
+                        <p className="text-xs font-semibold text-gray-700 uppercase">Tjenester:</p>
+                        {vehicle.bookingServices.map((bs, bsIdx) => (
+                          <div key={bsIdx} className="flex justify-between text-sm">
+                            <span>{bs.service.name}</span>
+                            <span className="font-medium">kr {Number(bs.totalPrice).toLocaleString('nb-NO')}</span>
+                          </div>
+                        ))}
                       </div>
-                    )}
-
-                    {vehicle.vehicleNotes && (
-                      <p className="text-sm text-gray-600 italic">
-                        Notater: {vehicle.vehicleNotes}
-                      </p>
-                    )}
-
-                    {/* Tjenester */}
-                    <div className="space-y-1 mt-2">
-                      <p className="text-sm font-medium text-gray-700">Tjenester:</p>
-                      {vehicle.bookingServices.map((service, serviceIdx) => (
-                        <div key={serviceIdx} className="text-sm text-gray-600 ml-3">
-                          • {service.service.name}
-                        </div>
-                      ))}
                     </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Kundens Notater */}
-              {selectedEvent.resource.fullBooking.customerNotes && (
-                <div className="space-y-2 bg-orange-50 p-4 rounded-lg">
-                  <p className="font-semibold">Kundens notater:</p>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {selectedEvent.resource.fullBooking.customerNotes}
-                  </p>
+                  ))}
                 </div>
-              )}
 
-              {/* Total Pris */}
-              <div className="bg-gray-900 text-white p-4 rounded-lg">
-                <p className="text-sm">Total pris</p>
-                <p className="text-3xl font-bold">
-                  kr {selectedEvent.resource.totalPrice.toLocaleString('nb-NO')}
-                </p>
+                {/* Tid og Pris */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="border rounded-lg p-4">
+                    <p className="text-sm text-gray-600 flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Varighet
+                    </p>
+                    <p className="text-2xl font-bold">
+                      {Math.floor(selectedEvent.resource.duration / 60)}t {selectedEvent.resource.duration % 60}m
+                    </p>
+                  </div>
+                  <div className="border rounded-lg p-4">
+                    <p className="text-sm text-gray-600">Total Pris</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      kr {Number(selectedEvent.resource.totalPrice).toLocaleString('nb-NO')}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Kundenotat */}
+                {selectedEvent.resource.fullBooking.customerNotes && (
+                  <div className="border rounded-lg p-4">
+                    <p className="text-sm text-gray-600 mb-2">Kundens beskjed:</p>
+                    <p className="text-sm italic">{selectedEvent.resource.fullBooking.customerNotes}</p>
+                  </div>
+                )}
               </div>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
     </div>
   )
 }
-

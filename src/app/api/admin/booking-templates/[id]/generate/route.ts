@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { notifyBookingUpdate } from '@/lib/sse-notifications'
 
 // POST - Generer bookinger fra mal
 export async function POST(
@@ -293,6 +294,11 @@ export async function POST(
       where: { id: template.id },
       data: { lastGeneratedDate: new Date() },
     })
+
+    // Notify SSE clients about new bookings
+    if (createdBookings.length > 0) {
+      notifyBookingUpdate()
+    }
 
     return NextResponse.json({
       message: `${createdBookings.length} booking(er) opprettet`,

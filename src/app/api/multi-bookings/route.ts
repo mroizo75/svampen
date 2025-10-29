@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { sendBookingConfirmationEmail, sendAdminNotificationEmail } from '@/lib/email'
 import { sendBookingConfirmationSMS } from '@/lib/sms'
+import { notifyBookingUpdate } from '@/lib/sse-notifications'
 
 interface BookingVehicleData {
   vehicleTypeId: string
@@ -538,6 +539,9 @@ export async function POST(request: NextRequest) {
         })),
       })),
     }
+
+    // Notify SSE clients about new booking
+    notifyBookingUpdate()
 
     return NextResponse.json(serializedBooking, { status: 201 })
   } catch (error) {

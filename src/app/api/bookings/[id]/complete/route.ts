@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getOrCreateCustomer, createInvoice as createTripletexInvoice, sendInvoice, getInvoicePdfUrl } from '@/lib/tripletex'
+import { notifyBookingUpdate } from '@/lib/sse-notifications'
 
 // POST /api/bookings/[id]/complete - Marker booking som fullført og opprett faktura
 export async function POST(
@@ -209,6 +210,9 @@ export async function POST(
         // Continue even if invoice creation fails
       }
     }
+
+    // Notify SSE clients about booking completion
+    notifyBookingUpdate()
 
     return NextResponse.json({
       booking: updatedBooking,
