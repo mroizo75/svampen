@@ -185,10 +185,47 @@ async function main() {
       duration: 60, // 1 time
       category: ServiceCategory.SPECIAL,
     },
+    
+    // Generiske Bilforhandler-pakker (DEALER - kun admin)
+    {
+      name: 'Bilforhandler, Mini-pakken (Utv. vask) liten bil',
+      description: 'Utvendig vask for liten bil - Bilforhandlerpakke.',
+      duration: 30, // 30 min
+      category: ServiceCategory.DEALER,
+      isAdminOnly: true,
+    },
+    {
+      name: 'Bilforhandler, Storbil minipakke (Utv. vask)',
+      description: 'Utvendig vask for stor bil - Bilforhandlerpakke.',
+      duration: 45, // 45 min
+      category: ServiceCategory.DEALER,
+      isAdminOnly: true,
+    },
+    {
+      name: 'Bilforhandler, Demo vask, medium pakke',
+      description: 'Demo vask medium pakke - Bilforhandlerpakke.',
+      duration: 60, // 1 time
+      category: ServiceCategory.DEALER,
+      isAdminOnly: true,
+    },
+    {
+      name: 'Bilforhandler, Ny bil eksklusiv pakken med motorvask',
+      description: 'Ny bil behandling med motorvask - Bilforhandlerpakke.',
+      duration: 210, // 3t 30min
+      category: ServiceCategory.DEALER,
+      isAdminOnly: true,
+    },
+    {
+      name: 'Bilforhandler, Brukt bil, Eksklusiv pakken med motorvask og underspyling',
+      description: 'Bruktbil behandling med motorvask og underspyling - Bilforhandlerpakke.',
+      duration: 270, // 4t 30min
+      category: ServiceCategory.DEALER,
+      isAdminOnly: true,
+    },
   ]
 
   // Opprett alle tjenester
-  for (const service of services) {
+  for (const service of services as any[]) {
     await prisma.service.upsert({
       where: { name: service.name },
       update: service,
@@ -299,12 +336,22 @@ async function main() {
     { serviceName: 'Utvendig vask og polering (15-22 fot)', vehicleName: 'Båt (15-22 fot)', price: 3800 },
     { serviceName: 'Utv. vask Camping (opptil 6m)', vehicleName: 'Campingvogn/Bobil (opp til 6m)', price: 3990 },
     
-    // Bilforhandler-pakker
+    // Bilforhandler-pakker (spesifikke leverandører)
     { serviceName: 'Alleen Auto - Eksklusiv pakke med motorv. og underspyling (Liten bil)', vehicleName: 'Vanlig bil/liten varebil', price: 2487.50 },
     { serviceName: 'Alleen Auto - Eksklusiv pakke med motorv. og underspyling (Stor bil)', vehicleName: 'SUV/Caravelle/Kassebil/Minibuss', price: 3612.50 },
     { serviceName: 'Kvavik Auto - Brukt bil, Eksklusiv pakken med motorvask og underspyling', vehicleName: 'Vanlig bil/liten varebil', price: 2487.50 },
     { serviceName: 'Kvavik Auto - Ny bil eksklusiv pakken med motorvask', vehicleName: 'Vanlig bil/liten varebil', price: 1862.50 },
     { serviceName: 'Kvavik Auto - Demo vask, medium pakke', vehicleName: 'Vanlig bil/liten varebil', price: 700 },
+    
+    // Generiske Bilforhandler-pakker (DEALER kategori - kun admin)
+    { serviceName: 'Bilforhandler, Mini-pakken (Utv. vask) liten bil', vehicleName: 'Vanlig bil/liten varebil', price: 249 },
+    { serviceName: 'Bilforhandler, Storbil minipakke (Utv. vask)', vehicleName: 'SUV/Caravelle/Kassebil/Minibuss', price: 349 },
+    { serviceName: 'Bilforhandler, Demo vask, medium pakke', vehicleName: 'Vanlig bil/liten varebil', price: 630 },
+    { serviceName: 'Bilforhandler, Demo vask, medium pakke', vehicleName: 'SUV/Caravelle/Kassebil/Minibuss', price: 630 },
+    { serviceName: 'Bilforhandler, Ny bil eksklusiv pakken med motorvask', vehicleName: 'Vanlig bil/liten varebil', price: 1650 },
+    { serviceName: 'Bilforhandler, Ny bil eksklusiv pakken med motorvask', vehicleName: 'SUV/Caravelle/Kassebil/Minibuss', price: 1650 },
+    { serviceName: 'Bilforhandler, Brukt bil, Eksklusiv pakken med motorvask og underspyling', vehicleName: 'Vanlig bil/liten varebil', price: 2110 },
+    { serviceName: 'Bilforhandler, Brukt bil, Eksklusiv pakken med motorvask og underspyling', vehicleName: 'SUV/Caravelle/Kassebil/Minibuss', price: 2110 },
   ]
 
   // Opprett service prices

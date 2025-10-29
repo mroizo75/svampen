@@ -321,6 +321,51 @@ export async function getInvoiceStatus(invoiceId: number): Promise<{
 }
 
 /**
+ * Hent PDF-lenke for faktura
+ * Returnerer en signert URL som kan brukes til å laste ned PDF
+ */
+export async function getInvoicePdfUrl(invoiceId: number): Promise<string> {
+  try {
+    // Tripletex PDF API endpoint
+    const pdfUrl = `${TRIPLETEX_API_URL}/invoice/${invoiceId}/pdf`
+    
+    // Returner URL med auth token embedded for direkte download
+    const authToken = Buffer.from(`${TRIPLETEX_CONSUMER_TOKEN}:${TRIPLETEX_EMPLOYEE_TOKEN}`).toString('base64')
+    
+    return `${pdfUrl}?token=${authToken}`
+  } catch (error) {
+    console.error('Error generating PDF URL:', error)
+    throw error
+  }
+}
+
+/**
+ * Last ned faktura som PDF buffer
+ * Brukes for å generere PDF-fil server-side
+ */
+export async function downloadInvoicePdf(invoiceId: number): Promise<Buffer> {
+  try {
+    const response = await fetch(
+      `${TRIPLETEX_API_URL}/invoice/${invoiceId}/pdf`,
+      {
+        method: 'GET',
+        headers: getHeaders(),
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error(`Failed to download PDF: ${response.status}`)
+    }
+
+    const arrayBuffer = await response.arrayBuffer()
+    return Buffer.from(arrayBuffer)
+  } catch (error) {
+    console.error('Error downloading PDF:', error)
+    throw error
+  }
+}
+
+/**
  * Test Tripletex forbindelse
  */
 export async function testConnection(): Promise<{

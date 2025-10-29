@@ -81,7 +81,7 @@ export default function CompleteBookingButton({ bookingId, currentStatus }: Comp
         <DialogHeader>
           <DialogTitle>Fullfør booking</DialogTitle>
           <DialogDescription>
-            Når du markerer bookingen som fullført, kan du opprette faktura eller registrere betaling.
+            Fullfør bookingen og opprett automatisk faktura i Tripletex, eller marker som direkte betalt.
           </DialogDescription>
         </DialogHeader>
         
@@ -116,16 +116,24 @@ export default function CompleteBookingButton({ bookingId, currentStatus }: Comp
 
           {paymentStatus === 'UNPAID' && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-sm text-blue-900">
-                📧 En faktura vil bli opprettet og sendt til kunden via e-post.
+              <p className="text-sm font-medium text-blue-900 mb-2">
+                📄 Faktura opprettes automatisk i Tripletex:
               </p>
+              <ul className="text-sm text-blue-800 space-y-1 ml-4 list-disc">
+                <li>Kunde opprettes i Tripletex</li>
+                <li>Profesjonell PDF genereres</li>
+                <li>Faktura sendes til kundens e-post</li>
+              </ul>
             </div>
           )}
 
           {paymentStatus === 'PAID' && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-3">
               <p className="text-sm text-green-900">
-                ✅ Bookingen vil markeres som betalt. Ingen faktura sendes.
+                ✅ Bookingen markeres som betalt. Ingen faktura opprettes.
+              </p>
+              <p className="text-xs text-green-700 mt-1">
+                Bruk dette hvis kunden har betalt kontant, kort, eller Vipps direkte.
               </p>
             </div>
           )}

@@ -8,7 +8,6 @@ import { ArrowLeft, CheckCircle, Building2 } from 'lucide-react'
 import Link from 'next/link'
 import CompleteBookingButton from '@/components/admin/complete-booking-button'
 import InvoiceActions from '@/components/admin/invoice-actions'
-import { CreateInvoiceButton } from '@/components/admin/create-invoice-button'
 
 async function getBooking(id: string) {
   return await prisma.booking.findUnique({
@@ -138,21 +137,25 @@ export default async function BookingDetailsPage({
             </CardContent>
           </Card>
 
-          {/* Opprett faktura for bedriftskunder */}
-          {booking.company && booking.invoices.length === 0 && (
-            <Card className="border-green-200 bg-green-50">
+          {/* Info: Faktura opprettes automatisk ved fullføring */}
+          {booking.invoices.length === 0 && booking.status !== 'COMPLETED' && (
+            <Card className="border-blue-200 bg-blue-50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  📄 Opprett faktura i Tripletex
+                  💡 Faktura
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <CreateInvoiceButton
-                  bookingId={booking.id}
-                  companyName={booking.company.name}
-                  totalAmount={Number(booking.totalPrice)}
-                  hasExistingInvoice={false}
-                />
+                <p className="text-sm text-gray-700">
+                  {booking.company 
+                    ? `Faktura for ${booking.company.name} opprettes automatisk når du markerer bookingen som fullført.` 
+                    : `Faktura for ${booking.user.firstName} ${booking.user.lastName} opprettes automatisk når du markerer bookingen som fullført.`
+                  }
+                </p>
+                <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+                  <CheckCircle className="h-4 w-4" />
+                  <span>Opprett faktura → Marker som fullført</span>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -219,7 +222,11 @@ export default async function BookingDetailsPage({
                         </div>
                       )}
                       
-                      <InvoiceActions invoiceId={inv.id} status={inv.status} />
+                      <InvoiceActions 
+                        invoiceId={inv.id} 
+                        status={inv.status} 
+                        tripletexUrl={inv.tripletexUrl}
+                      />
                     </div>
                   )
                 })}

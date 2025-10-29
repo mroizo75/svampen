@@ -128,6 +128,8 @@ function getRoleBadge(role: string) {
       return <Badge variant="default" className="bg-purple-100 text-purple-800">Admin</Badge>
     case 'USER':
       return <Badge variant="secondary">Kunde</Badge>
+    case 'WORKSHOP':
+      return <Badge variant="default" className="bg-orange-100 text-orange-800">Verksted</Badge>
     default:
       return <Badge variant="secondary">{role}</Badge>
   }

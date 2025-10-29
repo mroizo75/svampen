@@ -30,3 +30,19 @@ export function hasRole(session: any, role: UserRole): boolean {
 export function isAdmin(session: any): boolean {
   return hasRole(session, UserRole.ADMIN)
 }
+
+export function isAnsatt(session: any): boolean {
+  return hasRole(session, UserRole.ANSATT)
+}
+
+export function isWorkshop(session: any): boolean {
+  return hasRole(session, UserRole.WORKSHOP)
+}
+
+export function canManageBookings(session: any): boolean {
+  return isAdmin(session) || isAnsatt(session)
+}
+
+export function canViewAllBookings(session: any): boolean {
+  return isAdmin(session) || isAnsatt(session) || isWorkshop(session)
+}

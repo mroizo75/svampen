@@ -17,7 +17,7 @@ export function Footer() {
             </p>
             <div className="flex items-center space-x-2 text-sm text-gray-300">
               <Clock className="h-4 w-4" />
-              <span>Man-Fre: 08:00-16:00</span>
+              <span>Man-Fre: 07:00-15:00</span>
             </div>
           </div>
 
@@ -73,13 +73,13 @@ export function Footer() {
               </div>
               <div className="flex items-center space-x-2 text-gray-300">
                 <Mail className="h-4 w-4" />
-                <a href="mailto:joachim@amento.no" className="hover:text-white transition-colors">
-                  joachim@amento.no
+                <a href="mailto:ordre@amento.no" className="hover:text-white transition-colors">
+                  ordre@amento.no
                 </a>
               </div>
               <div className="flex items-center space-x-2 text-gray-300">
                 <MapPin className="h-4 w-4" />
-                <span>Adresse kommer her</span>
+                <span>Nye monoddveien 7, 4580 Lyngdal</span>
               </div>
             </div>
           </div>

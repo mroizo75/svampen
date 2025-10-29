@@ -28,13 +28,18 @@ model User {
   // Relasjon til bedrifter (som kontaktperson)
   companies   Company[]
   
+  // Relasjon til utstyrssertifiseringer
+  equipmentCertifications UserEquipmentCertification[]
+  
   @@map("users")
 }
 
 // Brukerroller
 enum UserRole {
-  USER
-  ADMIN
+  USER      // Kunde - kun egne bookinger
+  ANSATT    // Ansatt - kan se kalender og alle bookinger, registrere bookinger
+  WORKSHOP  // Verksted - kun lesetilgang til kalender
+  ADMIN     // Administrator - full tilgang
 }
 
 // Bedriftskunder med fasteavtaler
@@ -129,6 +134,7 @@ model Service {
   duration    Int             // Varighet i minutter
   category    ServiceCategory @default(MAIN)
   isActive    Boolean         @default(true)
+  isAdminOnly Boolean         @default(false) // Kun synlig for admin (bedriftspakker)
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   
@@ -143,6 +149,7 @@ enum ServiceCategory {
   MAIN      // Hovedpakker (Mini, Medium, Eksklusiv)
   ADDON     // Tilleggstjenester (Seterens, Tepperens, etc.)
   SPECIAL   // Spesialtjenester (Rubbing, Lyktepolering, etc.)
+  DEALER    // Bilforhandler-pakker (kun admin)
 }
 
 // Kjøretøy typer for prising
@@ -196,7 +203,7 @@ model Booking {
   customerNotes   String?       @db.Text
   
   // Status tracking
-  status          BookingStatus @default(PENDING)
+  status          BookingStatus @default(CONFIRMED)
   
   // Betaling og faktura
   paymentStatus   PaymentStatus @default(UNPAID)
@@ -285,6 +292,7 @@ model Invoice {
   // Tripletex integrasjon
   tripletexId     Int?          @unique // ID fra Tripletex
   tripletexUrl    String?       // Link til faktura i Tripletex
+  tripletexPdfUrl String?       // PDF download URL
   tripletexVoucher Int?         // Bilag-nummer i Tripletex
   
   // Beløp
@@ -384,4 +392,209 @@ model LicenseValidationLog {
   validatedAt DateTime @default(now())
   
   @@map("license_validation_logs")
+}
+
+// ========================================
+// UTSTYRSSPESIFIKK OPPLÆRING
+// I henhold til Arbeidsmiljøloven § 4-5
+// ========================================
+
+// Utstyr som krever opplæring
+model Equipment {
+  id                    String   @id @default(cuid())
+  name                  String   // Navn på utstyr (f.eks. "Polérmaskin X2000")
+  category              String   // Kategori (f.eks. "Polérmaskin", "Løfteutstyr", "Kjemikalie")
+  manufacturer          String?  // Produsent
+  model                 String?  // Modellnummer
+  serialNumber          String?  // Serienummer
+  
+  // Beskrivelse og dokumentasjon
+  description           String?  @db.Text
+  location              String?  // Hvor utstyret befinner seg
+  purchaseDate          DateTime?
+  warrantyExpiresAt     DateTime?
+  
+  // Opplæringskrav
+  requiresTraining      Boolean  @default(true)
+  trainingValidityDays  Int?     // Hvor lenge opplæring er gyldig (null = evig)
+  minimumTrainingLevel  TrainingLevel @default(BASIC)
+  
+  // Sikkerhetsinfo
+  riskAssessment        String?  @db.Text // Risikovurdering
+  safetyInstructions    String?  @db.Text // Sikkerhetsinstruksjoner
+  emergencyProcedures   String?  @db.Text // Nødprosedyrer
+  
+  // Dokumenter (JSON array med filstier/URLs)
+  documents             Json?    // [{name: "", url: "", type: "manual|certificate|..."}]
+  
+  // Status
+  isActive              Boolean  @default(true)
+  requiresInspection    Boolean  @default(false)
+  nextInspectionDate    DateTime?
+  
+  // Timestamps
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relasjoner
+  trainingSessions      EquipmentTraining[]
+  userCertifications    UserEquipmentCertification[]
+  maintenanceLogs       EquipmentMaintenanceLog[]
+  
+  @@map("equipment")
+}
+
+// Opplæringsnivå
+enum TrainingLevel {
+  BASIC           // Grunnleggende - kan bruke under veiledning
+  INTERMEDIATE    // Selvstendig bruk
+  ADVANCED        // Avansert bruk
+  TRAINER         // Kan trene andre (intern opplærer)
+  SUPPLIER        // Leverandøropplæring (høyeste nivå)
+}
+
+// Opplæringsøkter/kurs
+model EquipmentTraining {
+  id                    String   @id @default(cuid())
+  equipmentId           String
+  equipment             Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  
+  // Kursdetaljer
+  title                 String   // Kurstittel
+  description           String?  @db.Text
+  trainingLevel         TrainingLevel
+  
+  // Leverandør/instruktør
+  providerId            String?
+  provider              TrainingProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  instructorName        String?  // Navn på instruktør
+  instructorCompany     String?  // Firma instruktør jobber for
+  
+  // Dato og varighet
+  trainingDate          DateTime
+  duration              Int?     // Varighet i timer
+  location              String?  // Sted for opplæring
+  
+  // Gyldighet
+  validityDays          Int?     // Hvor lenge sertifikat er gyldig
+  
+  // Deltakere og dokumentasjon
+  maxParticipants       Int?
+  documents             Json?    // [{name: "", url: "", type: ""}]
+  notes                 String?  @db.Text
+  
+  // Status
+  isCompleted           Boolean  @default(false)
+  
+  // Timestamps
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relasjoner
+  certifications        UserEquipmentCertification[]
+  
+  @@map("equipment_training")
+}
+
+// Leverandører av opplæring
+model TrainingProvider {
+  id                    String   @id @default(cuid())
+  name                  String   // Leverandørnavn
+  orgNumber             String?  @unique
+  contactPerson         String?
+  contactEmail          String?
+  contactPhone          String?
+  address               String?
+  
+  // Akkreditering
+  accreditations        Json?    // [{type: "", number: "", expiresAt: ""}]
+  
+  // Status
+  isActive              Boolean  @default(true)
+  notes                 String?  @db.Text
+  
+  // Timestamps
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relasjoner
+  trainingSessions      EquipmentTraining[]
+  
+  @@map("training_providers")
+}
+
+// Brukerens sertifiseringer/godkjenninger på utstyr
+model UserEquipmentCertification {
+  id                    String   @id @default(cuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  equipmentId           String
+  equipment             Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  trainingId            String?
+  training              EquipmentTraining? @relation(fields: [trainingId], references: [id], onDelete: SetNull)
+  
+  // Sertifikatdetaljer
+  certificationLevel    TrainingLevel
+  certifiedBy           String   // Hvem ga sertifikatet (navn)
+  certifiedByUserId     String?  // ID til intern bruker som ga opplæring (for opplæringstrapp)
+  certificationDate     DateTime
+  expiresAt             DateTime? // Når det utløper (null = aldri)
+  
+  // Dokumentasjon
+  certificateNumber     String?  // Sertifikatnummer
+  certificateDocument   String?  // URL/sti til PDF-sertifikat
+  notes                 String?  @db.Text
+  
+  // Status
+  isActive              Boolean  @default(true)
+  revokedAt             DateTime?
+  revokedBy             String?  // Hvem tilbakekalte
+  revokedReason         String?  @db.Text
+  
+  // Påminnelser
+  reminderSentAt        DateTime? // Siste påminnelse om fornyelse
+  
+  // Timestamps
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  @@unique([userId, equipmentId, certificationDate])
+  @@map("user_equipment_certifications")
+}
+
+// Vedlikeholdslogg for utstyr
+model EquipmentMaintenanceLog {
+  id                    String   @id @default(cuid())
+  equipmentId           String
+  equipment             Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  
+  // Vedlikeholdsdetaljer
+  type                  MaintenanceType
+  description           String   @db.Text
+  performedBy           String   // Hvem utførte vedlikeholdet
+  performedDate         DateTime
+  
+  // Status
+  cost                  Decimal? @db.Decimal(10, 2)
+  nextMaintenanceDate   DateTime?
+  
+  // Dokumentasjon
+  documents             Json?    // [{name: "", url: ""}]
+  notes                 String?  @db.Text
+  
+  // Timestamps
+  createdAt             DateTime @default(now())
+  
+  @@map("equipment_maintenance_logs")
+}
+
+// Vedlikeholdstype
+enum MaintenanceType {
+  INSPECTION          // Inspeksjon
+  REPAIR              // Reparasjon
+  PREVENTIVE          // Forebyggende vedlikehold
+  CALIBRATION         // Kalibrering
+  CLEANING            // Rengjøring
+  REPLACEMENT         // Utskifting av deler
+  OTHER               // Annet
 }

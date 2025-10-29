@@ -65,7 +65,7 @@ export default function CalendarView({
   businessHoursEnd = '16:00' 
 }: CalendarViewProps) {
   const router = useRouter()
-  const [view, setView] = useState<'month' | 'week' | 'day'>('month')
+  const [view, setView] = useState<'month' | 'week' | 'day'>('week')
   const [quickBookingOpen, setQuickBookingOpen] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<{ date: Date; time?: Date } | null>(null)
 
@@ -112,14 +112,11 @@ export default function CalendarView({
     }
   })
 
-  // Farger basert på status
+  // Farger basert på status med forbedret visning
   const eventStyleGetter = (event: CalendarEvent) => {
     let backgroundColor = '#3b82f6' // blue (default)
     
     switch (event.resource.status) {
-      case 'PENDING':
-        backgroundColor = '#eab308' // yellow
-        break
       case 'CONFIRMED':
         backgroundColor = '#3b82f6' // blue
         break
@@ -129,9 +126,6 @@ export default function CalendarView({
       case 'COMPLETED':
         backgroundColor = '#22c55e' // green
         break
-      case 'CANCELLED':
-        backgroundColor = '#ef4444' // red
-        break
       case 'NO_SHOW':
         backgroundColor = '#dc2626' // dark red
         break
@@ -140,13 +134,19 @@ export default function CalendarView({
     return {
       style: {
         backgroundColor,
-        borderRadius: '6px',
-        opacity: 0.9,
+        borderRadius: '8px',
+        opacity: 0.95,
         color: 'white',
-        border: '0px',
-        display: 'block',
-        fontSize: '14px',
-        padding: '4px 8px',
+        border: '2px solid white',
+        display: 'flex',
+        flexDirection: 'column',
+        fontSize: '13px',
+        padding: '6px 8px',
+        fontWeight: '500',
+        lineHeight: '1.3',
+        overflow: 'hidden',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+        cursor: 'pointer',
       },
     }
   }
@@ -165,15 +165,28 @@ export default function CalendarView({
     setQuickBookingOpen(true)
   }
 
-  // Custom event-wrapper for bedre visning
-  const EventComponent = ({ event }: { event: CalendarEvent }) => (
-    <div className="flex flex-col">
-      <strong className="text-sm">{event.resource.customerName}</strong>
-      <span className="text-xs opacity-90">
-        {event.resource.vehicleCount} kjøretøy • {Math.floor(event.resource.duration / 60)}t {event.resource.duration % 60}min
-      </span>
-    </div>
-  )
+  // Custom event-wrapper for bedre visning av overlappende events
+  const EventComponent = ({ event }: { event: CalendarEvent }) => {
+    const hours = Math.floor(event.resource.duration / 60)
+    const minutes = event.resource.duration % 60
+    const timeStr = hours > 0 ? `${hours}t${minutes > 0 ? ` ${minutes}m` : ''}` : `${minutes}m`
+    
+    return (
+      <div className="flex flex-col h-full justify-between" style={{ minHeight: '50px' }}>
+        <div>
+          <div className="font-bold truncate text-white" style={{ fontSize: '13px' }}>
+            {event.resource.customerName}
+          </div>
+          <div className="text-white/90 text-xs truncate">
+            {event.resource.vehicleCount} kjøretøy
+          </div>
+        </div>
+        <div className="text-white/80 text-xs font-medium">
+          {timeStr} • kr {event.resource.totalPrice.toLocaleString('nb-NO')}
+        </div>
+      </div>
+    )
+  }
 
   const messages = {
     allDay: 'Hele dagen',
@@ -195,26 +208,22 @@ export default function CalendarView({
     <div className="space-y-4">
       {/* Forklaring av farger */}
       <Card className="p-4">
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-6">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded" style={{ backgroundColor: '#eab308' }}></div>
-            <span className="text-sm text-gray-600">Venter</span>
+            <div className="w-5 h-5 rounded-md border-2 border-white shadow-sm" style={{ backgroundColor: '#3b82f6' }}></div>
+            <span className="text-sm font-medium text-gray-700">Bekreftet</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded" style={{ backgroundColor: '#3b82f6' }}></div>
-            <span className="text-sm text-gray-600">Bekreftet</span>
+            <div className="w-5 h-5 rounded-md border-2 border-white shadow-sm" style={{ backgroundColor: '#8b5cf6' }}></div>
+            <span className="text-sm font-medium text-gray-700">Pågår</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded" style={{ backgroundColor: '#8b5cf6' }}></div>
-            <span className="text-sm text-gray-600">Pågår</span>
+            <div className="w-5 h-5 rounded-md border-2 border-white shadow-sm" style={{ backgroundColor: '#22c55e' }}></div>
+            <span className="text-sm font-medium text-gray-700">Fullført</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded" style={{ backgroundColor: '#22c55e' }}></div>
-            <span className="text-sm text-gray-600">Fullført</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded" style={{ backgroundColor: '#ef4444' }}></div>
-            <span className="text-sm text-gray-600">Avbestilt</span>
+            <div className="w-5 h-5 rounded-md border-2 border-white shadow-sm" style={{ backgroundColor: '#dc2626' }}></div>
+            <span className="text-sm font-medium text-gray-700">Ikke møtt opp</span>
           </div>
         </div>
       </Card>
@@ -244,6 +253,7 @@ export default function CalendarView({
             timeslots={2}
             min={calendarMinTime}
             max={calendarMaxTime}
+            dayLayoutAlgorithm="no-overlap"
           />
         </div>
       </Card>

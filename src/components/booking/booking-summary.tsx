@@ -23,7 +23,13 @@ interface Service {
   name: string
   description: string
   duration: number
-  category: 'MAIN' | 'ADDON' | 'SPECIAL'
+  category: 'MAIN' | 'ADDON' | 'SPECIAL' | 'DEALER'
+  isAdminOnly?: boolean
+  servicePrices: Array<{
+    id: string
+    price: number
+    vehicleTypeId: string
+  }>
 }
 
 interface VehicleType {

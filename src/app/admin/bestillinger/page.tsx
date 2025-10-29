@@ -80,7 +80,7 @@ export default async function AdminBookingsPage({
   const page = Number(params.page) || 1
   const { bookings, totalCount, totalPages, currentPage } = await getBookings(page)
 
-  const pendingCount = bookings.filter(b => b.status === 'PENDING').length
+  const inProgressCount = bookings.filter(b => b.status === 'IN_PROGRESS').length
   const confirmedCount = bookings.filter(b => b.status === 'CONFIRMED').length
   const completedCount = bookings.filter(b => b.status === 'COMPLETED').length
 
@@ -104,11 +104,11 @@ export default async function AdminBookingsPage({
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Venter på bekreftelse</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600" />
+            <CardTitle className="text-sm font-medium">I gang</CardTitle>
+            <Clock className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pendingCount}</div>
+            <div className="text-2xl font-bold">{inProgressCount}</div>
           </CardContent>
         </Card>
 

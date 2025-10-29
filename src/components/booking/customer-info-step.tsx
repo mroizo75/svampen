@@ -296,25 +296,35 @@ export function CustomerInfoStep({ customerInfo, onCustomerInfoChange, isAdminBo
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">E-post *</Label>
+            <Label htmlFor="email">E-post {customerInfo.phone ? '(valgfri)' : '*'}</Label>
             <Input
               id="email"
               type="email"
               value={customerInfo.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
               placeholder="din@email.com"
+              pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+              title="Vennligst oppgi en gyldig e-postadresse (f.eks. navn@eksempel.no)"
             />
+            <p className="text-xs text-gray-500">
+              {customerInfo.phone ? 'Valgfri når telefon er oppgitt' : 'Påkrevd hvis telefon ikke oppgis'}
+            </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Telefonnummer *</Label>
+            <Label htmlFor="phone">Telefonnummer {customerInfo.email ? '(valgfri)' : '*'}</Label>
             <Input
               id="phone"
               type="tel"
               value={customerInfo.phone}
               onChange={(e) => handleInputChange('phone', e.target.value)}
               placeholder="+47 xxx xx xxx"
+              pattern="^[\d\s\+\-\(\)]+$"
+              title="Vennligst oppgi et gyldig telefonnummer"
             />
+            <p className="text-xs text-gray-500">
+              {customerInfo.email ? 'Valgfri når e-post er oppgitt' : 'Påkrevd hvis e-post ikke oppgis'}
+            </p>
           </div>
 
           <Separator />

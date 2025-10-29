@@ -16,6 +16,36 @@ interface SendSMSResponse {
 }
 
 /**
+ * Normaliser telefonnummer for SMS-sending
+ * Fjerner +47 og andre landskoder
+ * Eksempel: +4799112916 → 4799112916
+ * Eksempel: +4799112916 → 4799112916
+ * Eksempel: 99112916 → 4799112916
+ */
+function normalizePhoneNumber(phone: string): string {
+  // Fjern alle mellomrom og bindestrek
+  let normalized = phone.replace(/[\s\-]/g, '')
+  
+  // Fjern "+" hvis det finnes
+  if (normalized.startsWith('+')) {
+    normalized = normalized.substring(1)
+  }
+  
+  // Hvis nummeret starter med 47 (norsk landskode) og har mer enn 8 siffer
+  // så fjern landskoden
+  if (normalized.startsWith('47') && normalized.length > 8) {
+    normalized = normalized.substring(2)
+  }
+  
+  // Legg til 47 foran hvis det er et 8-sifret nummer (norsk mobilnummer)
+  if (normalized.length === 8 && !normalized.startsWith('47')) {
+    normalized = '47' + normalized
+  }
+  
+  return normalized
+}
+
+/**
  * Send SMS using proSMS API
  */
 export async function sendSMS({ to, message, sender = 'Svampen' }: SendSMSParams): Promise<SendSMSResponse> {
@@ -31,17 +61,19 @@ export async function sendSMS({ to, message, sender = 'Svampen' }: SendSMSParams
   }
 
   try {
-    // Validate phone number format
-    const cleanedPhone = to.replace(/\s/g, '')
-    if (!cleanedPhone.startsWith('+')) {
+    // Normaliser telefonnummeret (fjern +, landskode, etc.)
+    const normalizedPhone = normalizePhoneNumber(to)
+    
+    // Valider at vi har et gyldig nummer
+    if (!normalizedPhone || normalizedPhone.length < 8) {
       return {
         success: false,
-        error: 'Invalid phone number format',
+        error: 'Ugyldig telefonnummer format',
       }
     }
 
-    // Convert phone number to number format (remove + and spaces)
-    const receiverNumber = parseInt(cleanedPhone.replace('+', ''))
+    // Konverter til nummer for ProSMS API
+    const receiverNumber = parseInt(normalizedPhone)
     
     const requestBody = {
       receiver: receiverNumber,

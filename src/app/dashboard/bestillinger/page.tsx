@@ -55,7 +55,6 @@ export default function BookingsPage() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-      PENDING: { label: 'Venter', variant: 'secondary' },
       CONFIRMED: { label: 'Bekreftet', variant: 'default' },
       IN_PROGRESS: { label: 'Pågår', variant: 'default' },
       COMPLETED: { label: 'Fullført', variant: 'outline' },

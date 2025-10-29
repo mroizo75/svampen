@@ -46,6 +46,10 @@ export default function LoginPage() {
         const session = await getSession()
         if (session?.user?.role === 'ADMIN') {
           router.push('/admin')
+        } else if (session?.user?.role === 'ANSATT') {
+          router.push('/ansatt')
+        } else if (session?.user?.role === 'WORKSHOP') {
+          router.push('/verksted')
         } else {
           router.push('/dashboard')
         }

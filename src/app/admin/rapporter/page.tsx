@@ -2,14 +2,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { 
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { 
   Select,
   SelectContent,
   SelectItem,
@@ -25,9 +17,9 @@ import {
   Car,
   Download,
   Filter,
-  Clock
 } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
+import { PaginatedBookingsTable } from '@/components/admin/paginated-bookings-table'
 
 async function getReportData() {
   try {
@@ -168,14 +160,16 @@ async function getReportData() {
 
 function getStatusBadge(status: string) {
   switch (status) {
-    case 'PENDING':
-      return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Venter</Badge>
     case 'CONFIRMED':
       return <Badge variant="default" className="bg-blue-100 text-blue-800">Bekreftet</Badge>
+    case 'IN_PROGRESS':
+      return <Badge variant="default" className="bg-purple-100 text-purple-800">Pågår</Badge>
     case 'COMPLETED':
       return <Badge variant="default" className="bg-green-100 text-green-800">Fullført</Badge>
     case 'CANCELLED':
       return <Badge variant="destructive">Avbestilt</Badge>
+    case 'NO_SHOW':
+      return <Badge variant="destructive">Møtte ikke</Badge>
     default:
       return <Badge variant="secondary">{status}</Badge>
   }
@@ -346,7 +340,7 @@ export default async function AdminReportsPage() {
           <div className="flex justify-between items-center">
             <div>
               <CardTitle>Detaljert måneds rapport</CardTitle>
-              <CardDescription>Alle bestillinger denne måneden</CardDescription>
+              <CardDescription>Alle bestillinger denne måneden ({reportData.monthlyBookings.length} totalt)</CardDescription>
             </div>
             <Select defaultValue="current-month">
               <SelectTrigger className="w-48">
@@ -367,53 +361,7 @@ export default async function AdminReportsPage() {
               <p className="text-gray-500">Ingen bestillinger denne måneden</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Dato</TableHead>
-                    <TableHead>Kunde</TableHead>
-                    <TableHead>Tjeneste</TableHead>
-                    <TableHead>Kjøretøy</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Beløp</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reportData.monthlyBookings.map((booking) => {
-                    const vehicleCount = booking.bookingVehicles.length
-                    const serviceCount = booking.bookingVehicles.reduce((sum, v) => sum + v.bookingServices.length, 0)
-                    const vehicleNames = booking.bookingVehicles.map(v => v.vehicleType.name).join(', ')
-                    
-                    return (
-                      <TableRow key={booking.id}>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <Clock className="mr-2 h-3 w-3 text-gray-400" />
-                            {new Date(booking.createdAt).toLocaleDateString('nb-NO')}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {booking.user.firstName} {booking.user.lastName}
-                        </TableCell>
-                        <TableCell>
-                          {serviceCount} {serviceCount === 1 ? 'tjeneste' : 'tjenester'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="max-w-xs truncate" title={vehicleNames}>
-                            {vehicleNames}
-                          </div>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(booking.status)}</TableCell>
-                        <TableCell className="text-right font-medium">
-                          kr {booking.totalPrice.toLocaleString('nb-NO')}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+            <PaginatedBookingsTable bookings={reportData.monthlyBookings} />
           )}
         </CardContent>
       </Card>

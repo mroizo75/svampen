@@ -4,6 +4,11 @@ import CalendarView from '@/components/admin/calendar-view'
 async function getBookings() {
   try {
     const bookings = await prisma.booking.findMany({
+      where: {
+        status: {
+          not: 'CANCELLED', // Ikke vis avbestilte bookinger
+        },
+      },
       include: {
         user: {
           select: {

@@ -16,6 +16,13 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { UserPlus, AlertCircle, CheckCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export function AddCustomerDialog() {
   const router = useRouter()
@@ -30,6 +37,7 @@ export function AddCustomerDialog() {
     email: '',
     phone: '',
     password: '',
+    role: 'USER' as 'USER' | 'WORKSHOP',
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,6 +80,7 @@ export function AddCustomerDialog() {
         email: '',
         phone: '',
         password: '',
+        role: 'USER',
       })
 
       // Vent litt så brukeren ser suksessmeldingen
@@ -99,6 +108,7 @@ export function AddCustomerDialog() {
           email: '',
           phone: '',
           password: '',
+          role: 'USER',
         })
         setError(null)
         setSuccess(null)
@@ -215,6 +225,28 @@ export function AddCustomerDialog() {
               />
               <p className="text-xs text-gray-500">
                 Valgfritt - hvis tomt genereres et tilfeldig passord
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="role">
+                Brukerrolle <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={formData.role}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as 'USER' | 'WORKSHOP' }))}
+                disabled={loading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Velg rolle" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USER">Kunde (bruker)</SelectItem>
+                  <SelectItem value="WORKSHOP">Verksted (read-only kalender)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                Verksted-brukere har kun tilgang til kalendervisning
               </p>
             </div>
           </div>

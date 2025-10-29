@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getOrCreateCustomer, createInvoice, sendInvoice } from '@/lib/tripletex'
+import { getOrCreateCustomer, createInvoice, sendInvoice, getInvoicePdfUrl } from '@/lib/tripletex'
 
 // POST - Opprett faktura fra booking
 export async function POST(request: Request) {
@@ -64,25 +64,30 @@ export async function POST(request: Request) {
       )
     }
 
-    // Kun bedriftskunder skal få faktura til Tripletex
-    if (!booking.company) {
-      return NextResponse.json(
-        { message: 'Kun bedriftskunder kan få faktura til Tripletex' },
-        { status: 400 }
-      )
-    }
-
-    const company = booking.company
-
-    // 1. Opprett/hent kunde i Tripletex
+    // 1. Opprett/hent kunde i Tripletex (både bedrift og privatkunde)
     console.log('Creating/getting Tripletex customer...')
-    const tripletexCustomerId = await getOrCreateCustomer({
-      name: company.name,
-      orgNumber: company.orgNumber || undefined,
-      email: company.invoiceEmail || company.contactEmail,
-      phone: company.contactPhone || undefined,
-      invoiceEmail: company.invoiceEmail || company.contactEmail,
-    })
+    
+    // Hvis bedriftskunde
+    if (booking.company) {
+      const company = booking.company
+      var tripletexCustomerId = await getOrCreateCustomer({
+        name: company.name,
+        orgNumber: company.orgNumber || undefined,
+        email: company.invoiceEmail || company.contactEmail,
+        phone: company.contactPhone || undefined,
+        invoiceEmail: company.invoiceEmail || company.contactEmail,
+      })
+    } 
+    // Hvis privatkunde
+    else {
+      const user = booking.user
+      var tripletexCustomerId = await getOrCreateCustomer({
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        phone: user.phone || undefined,
+        invoiceEmail: user.email,
+      })
+    }
 
     // 2. Bygg faktura-linjer
     const invoiceLines: Array<{
@@ -109,8 +114,11 @@ export async function POST(request: Request) {
     const invoiceDate = new Date()
     const dueDate = new Date()
     
-    // Beregn forfallsdato basert på betalingsvilkår (standard: 30 dager)
-    const paymentTermsDays = company.paymentTerms ? parseInt(company.paymentTerms) : 30
+    // Beregn forfallsdato basert på betalingsvilkår
+    // Bedrift: bruk deres paymentTerms, Privat: 14 dager
+    const paymentTermsDays = booking.company?.paymentTerms 
+      ? parseInt(booking.company.paymentTerms) 
+      : 14 // 14 dager for privatkunder
     dueDate.setDate(dueDate.getDate() + paymentTermsDays)
 
     console.log('Creating Tripletex invoice...')
@@ -143,13 +151,23 @@ export async function POST(request: Request) {
 
     const invoiceNumber = `INV-${year}-${String(nextNumber).padStart(4, '0')}`
 
-    // 5. Lagre faktura i database
+    // 5. Generer PDF URL fra Tripletex
+    let pdfUrl: string | undefined
+    try {
+      pdfUrl = await getInvoicePdfUrl(tripletexInvoice.id)
+    } catch (error) {
+      console.error('Could not generate PDF URL:', error)
+      // Continue without PDF URL
+    }
+
+    // 6. Lagre faktura i database
     const invoice = await prisma.invoice.create({
       data: {
         bookingId: booking.id,
         invoiceNumber,
         tripletexId: tripletexInvoice.id,
         tripletexUrl: tripletexInvoice.url,
+        tripletexPdfUrl: pdfUrl,
         tripletexVoucher: tripletexInvoice.voucherNumber,
         amount: Number(booking.totalPrice),
         taxAmount: Number(booking.totalPrice) * 0.2, // 20% av totalbeløp som MVA
@@ -161,7 +179,7 @@ export async function POST(request: Request) {
       },
     })
 
-    // 6. Send faktura til kunde hvis ønsket
+    // 7. Send faktura til kunde hvis ønsket
     if (sendToCustomer) {
       console.log('Sending invoice to customer...')
       const sent = await sendInvoice(tripletexInvoice.id)
@@ -177,7 +195,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 7. Oppdater booking payment status
+    // 8. Oppdater booking payment status
     await prisma.booking.update({
       where: { id: booking.id },
       data: {

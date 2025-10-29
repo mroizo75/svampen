@@ -23,7 +23,8 @@ interface Service {
   name: string
   description: string
   duration: number
-  category: 'MAIN' | 'ADDON' | 'SPECIAL'
+  category: 'MAIN' | 'ADDON' | 'SPECIAL' | 'DEALER'
+  isAdminOnly?: boolean
   servicePrices: Array<{
     id: string
     price: number
@@ -45,15 +46,17 @@ interface ServiceSelectorProps {
   vehicleTypeId: string
   selectedServices: SelectedService[]
   onServicesChange: (services: SelectedService[]) => void
+  isAdminBooking?: boolean
 }
 
 export function ServiceSelector({ 
   services, 
   vehicleTypeId, 
   selectedServices, 
-  onServicesChange 
+  onServicesChange,
+  isAdminBooking = false
 }: ServiceSelectorProps) {
-  const [selectedCategory, setSelectedCategory] = useState<'MAIN' | 'ADDON' | 'SPECIAL'>('MAIN')
+  const [selectedCategory, setSelectedCategory] = useState<'MAIN' | 'ADDON' | 'SPECIAL' | 'DEALER'>('MAIN')
 
   // Filtrer tjenester etter kategori OG om de har pris for valgt kjøretøy
   const hasValidPrice = (service: Service) => {
@@ -61,14 +64,19 @@ export function ServiceSelector({
     return priceInfo && Number(priceInfo.price) > 0
   }
 
-  const mainServices = services.filter(s => s.category === 'MAIN' && hasValidPrice(s))
-  const addonServices = services.filter(s => s.category === 'ADDON' && hasValidPrice(s))
-  const specialServices = services.filter(s => s.category === 'SPECIAL' && hasValidPrice(s))
+  // Filtrer bort admin-only tjenester hvis ikke admin
+  const availableServices = services.filter(s => !s.isAdminOnly || isAdminBooking)
+
+  const mainServices = availableServices.filter(s => s.category === 'MAIN' && hasValidPrice(s))
+  const addonServices = availableServices.filter(s => s.category === 'ADDON' && hasValidPrice(s))
+  const specialServices = availableServices.filter(s => s.category === 'SPECIAL' && hasValidPrice(s))
+  const dealerServices = availableServices.filter(s => s.category === 'DEALER' && hasValidPrice(s))
 
   const categories = [
     { key: 'MAIN', label: 'Hovedpakker', services: mainServices },
     { key: 'ADDON', label: 'Tilleggstjenester', services: addonServices },
     { key: 'SPECIAL', label: 'Spesialtjenester', services: specialServices },
+    ...(isAdminBooking ? [{ key: 'DEALER', label: '🏢 Bilforhandler-pakker', services: dealerServices }] : []),
   ]
 
   // Auto-velg første tilgjengelige kategori hvis valgt kategori er tom

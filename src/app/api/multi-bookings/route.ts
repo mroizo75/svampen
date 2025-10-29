@@ -425,7 +425,7 @@ export async function POST(request: NextRequest) {
         estimatedEnd,
         totalPrice: bookingData.totalPrice,
         customerNotes: bookingData.customerNotes || null,
-        status: 'PENDING',
+        status: 'CONFIRMED',
         bookingVehicles: {
           create: bookingData.vehicles.map(vehicle => ({
             vehicleTypeId: vehicle.vehicleTypeId,

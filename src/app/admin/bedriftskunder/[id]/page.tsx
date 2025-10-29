@@ -366,16 +366,26 @@ export default async function CompanyDetailsPage({ params }: { params: Promise<{
                               <p className="text-sm text-gray-600">
                                 Forfaller: {formatDate(invoice.dueDate)}
                               </p>
-                              {invoice.tripletexUrl && (
-                                <a
-                                  href={invoice.tripletexUrl}
+                              <div className="mt-2 flex gap-2 flex-wrap">
+                                <Link
+                                  href={`/api/invoices/${invoice.id}/download`}
                                   target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm text-blue-600 hover:underline"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
                                 >
-                                  Se i Tripletex →
-                                </a>
-                              )}
+                                  <FileText className="h-3.5 w-3.5" />
+                                  Last ned PDF
+                                </Link>
+                                {invoice.tripletexUrl && (
+                                  <Link
+                                    href={invoice.tripletexUrl}
+                                    target="_blank"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                  >
+                                    <FileText className="h-3.5 w-3.5" />
+                                    Se i Tripletex
+                                  </Link>
+                                )}
+                              </div>
                             </div>
                             <div className="text-right">
                               <p className="text-xl font-bold text-gray-900">

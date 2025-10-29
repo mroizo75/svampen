@@ -85,7 +85,7 @@ async function getDashboardStats() {
           gte: todayStart,
         },
         status: {
-          in: ['PENDING', 'CONFIRMED'],
+          in: ['CONFIRMED', 'IN_PROGRESS'],
         },
       },
       include: {
@@ -287,11 +287,10 @@ export default async function AdminDashboard() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Badge 
-                        variant={booking.status === 'CONFIRMED' ? 'default' : 'secondary'}
-                      >
-                        {booking.status === 'PENDING' && 'Venter'}
+                      <Badge variant="default">
                         {booking.status === 'CONFIRMED' && 'Bekreftet'}
+                        {booking.status === 'IN_PROGRESS' && 'Pågår'}
+                        {booking.status === 'COMPLETED' && 'Fullført'}
                       </Badge>
                       <span className="font-semibold">kr {booking.totalPrice.toLocaleString('nb-NO')}</span>
                     </div>

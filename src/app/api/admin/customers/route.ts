@@ -4,6 +4,70 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
 
+// GET - Hent alle brukere
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user || session.user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { message: 'Kun administratorer har tilgang' },
+        { status: 403 }
+      )
+    }
+
+    const { searchParams } = new URL(req.url)
+    const roleParam = searchParams.get('role')
+
+    // Bygg where-clause basert på role parameter
+    let whereClause: any = {}
+    
+    if (roleParam === 'staff') {
+      // Kun ADMIN og ANSATT (for opplæring)
+      whereClause = {
+        role: {
+          in: ['ADMIN', 'ANSATT']
+        }
+      }
+    } else if (roleParam === 'all') {
+      // Alle brukere
+      whereClause = {}
+    } else {
+      // Default: ikke admin-brukere
+      whereClause = {
+        role: {
+          not: 'ADMIN'
+        }
+      }
+    }
+
+    const users = await prisma.user.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: {
+        firstName: 'asc',
+      }
+    })
+
+    return NextResponse.json(users)
+
+  } catch (error) {
+    console.error('Error fetching users:', error)
+    return NextResponse.json(
+      { message: 'Feil ved henting av brukere' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Sjekk autentisering
@@ -16,12 +80,21 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { firstName, lastName, email, phone, password } = await req.json()
+    const { firstName, lastName, email, phone, password, role } = await req.json()
 
     // Validering
     if (!firstName || !lastName || !email) {
       return NextResponse.json(
         { message: 'Fornavn, etternavn og e-post er påkrevd' },
+        { status: 400 }
+      )
+    }
+
+    // Valider rolle
+    const validRoles = ['USER', 'ANSATT', 'WORKSHOP']
+    if (role && !validRoles.includes(role)) {
+      return NextResponse.json(
+        { message: 'Ugyldig brukerrolle' },
         { status: 400 }
       )
     }
@@ -71,7 +144,7 @@ export async function POST(req: NextRequest) {
         email,
         phone: phone || null,
         password: hashedPassword,
-        role: 'USER',
+        role: role || 'USER',
       },
       select: {
         id: true,

@@ -38,7 +38,8 @@ interface Service {
   name: string
   description: string
   duration: number
-  category: 'MAIN' | 'ADDON' | 'SPECIAL'
+  category: 'MAIN' | 'ADDON' | 'SPECIAL' | 'DEALER'
+  isAdminOnly?: boolean
   servicePrices: Array<{
     id: string
     price: number
@@ -226,105 +227,27 @@ export function MultiBookingWizard({
     if (isAdminBooking) {
       const quickBookingDate = sessionStorage.getItem('quickBookingDate')
       const quickBookingTime = sessionStorage.getItem('quickBookingTime')
-      const quickBookingCustomer = sessionStorage.getItem('quickBookingCustomer')
-      const quickBookingCustomerType = sessionStorage.getItem('quickBookingCustomerType')
-      const quickBookingCompanyId = sessionStorage.getItem('quickBookingCompanyId')
-      const quickBookingTemplate = sessionStorage.getItem('quickBookingTemplate')
       
-      if (quickBookingDate || quickBookingTime || quickBookingCustomer || quickBookingCustomerType || quickBookingTemplate) {
-        // Sett kundetype
-        if (quickBookingCustomerType === 'company') {
-          setCustomerType('company')
-        } else {
-          setCustomerType('private')
-        }
-
-        // Sett bedrift hvis bedriftskunde
-        if (quickBookingCompanyId && companies.length > 0) {
-          const company = companies.find(c => c.id === quickBookingCompanyId)
-          if (company) {
-            setSelectedCompany(company)
-          }
-        }
-
+      if (quickBookingDate || quickBookingTime) {
         setBookingData(prev => {
           const updates: any = {}
           
           if (quickBookingDate) {
-            updates.scheduledDate = new Date(quickBookingDate)
+            updates.scheduledDate = new Date(quickBookingDate + 'T00:00:00')
           }
           if (quickBookingTime) {
             updates.scheduledTime = quickBookingTime
-          }
-          if (quickBookingCustomer) {
-            try {
-              const customerData = JSON.parse(quickBookingCustomer)
-              updates.customerInfo = {
-                ...prev.customerInfo,
-                firstName: customerData.firstName || prev.customerInfo.firstName,
-                lastName: customerData.lastName || prev.customerInfo.lastName,
-                email: customerData.email || prev.customerInfo.email,
-                phone: customerData.phone || prev.customerInfo.phone,
-              }
-            } catch (e) {
-              console.error('Error parsing quickBookingCustomer:', e)
-            }
-          }
-          if (quickBookingCompanyId) {
-            updates.companyId = quickBookingCompanyId
-          }
-          
-          // Håndter booking-mal hvis valgt
-          if (quickBookingTemplate) {
-            try {
-              const template = JSON.parse(quickBookingTemplate)
-              const vehiclesConfig = typeof template.vehiclesConfig === 'string' 
-                ? JSON.parse(template.vehiclesConfig) 
-                : template.vehiclesConfig
-              
-              // Konverter vehiclesConfig til vehicles array
-              const templateVehicles = vehiclesConfig.map((vc: any) => ({
-                id: Math.random().toString(36).substr(2, 9),
-                vehicleTypeId: vc.vehicleTypeId,
-                vehicleInfo: vc.vehicleInfo || '',
-                vehicleNotes: vc.vehicleNotes || '',
-                services: vc.services.map((s: any) => ({
-                  serviceId: s.serviceId,
-                  quantity: s.quantity || 1,
-                  unitPrice: 0, // Vil bli beregnet av wizard
-                  totalPrice: 0,
-                  duration: 0,
-                })),
-              }))
-              
-              updates.vehicles = templateVehicles
-              
-              // Sett notater fra mal hvis det finnes
-              if (template.defaultNotes) {
-                updates.customerNotes = template.defaultNotes
-              }
-            } catch (e) {
-              console.error('Error parsing quickBookingTemplate:', e)
-            }
           }
           
           return { ...prev, ...updates }
         })
         
-        // ✨ HOPP OVER STEG 0 - start direkte på steg 1 (kjøretøy/tjenester)
-        // Dette gjør quick-booking virkelig "rask"!
-        setCurrentStep(1)
-        
         // Rydd opp sessionStorage
         sessionStorage.removeItem('quickBookingDate')
         sessionStorage.removeItem('quickBookingTime')
-        sessionStorage.removeItem('quickBookingCustomer')
-        sessionStorage.removeItem('quickBookingCustomerType')
-        sessionStorage.removeItem('quickBookingCompanyId')
-        sessionStorage.removeItem('quickBookingTemplate')
       }
     }
-  }, [isAdminBooking, companies])
+  }, [isAdminBooking])
 
   // Sjekk tilgjengelig tid når dato er valgt (for admin bookinger)
   useEffect(() => {
@@ -399,10 +322,10 @@ export function MultiBookingWizard({
           if (customerType === 'company') {
             return !!selectedCompany
           } else {
+            // Må ha navn OG enten e-post eller telefon
             return bookingData.customerInfo.firstName && 
                    bookingData.customerInfo.lastName && 
-                   bookingData.customerInfo.email && 
-                   bookingData.customerInfo.phone
+                   (bookingData.customerInfo.email || bookingData.customerInfo.phone)
           }
         case 2: // Fra steg 1 til 2
           const hasVehiclesAndServices = bookingData.vehicles.length > 0 && 
@@ -428,10 +351,10 @@ export function MultiBookingWizard({
           return bookingData.vehicles.length > 0 && 
                  bookingData.vehicles.every(v => v.vehicleTypeId && v.services.length > 0)
         case 3: // Fra steg 2 til 3
+          // Må ha navn OG enten e-post eller telefon
           return bookingData.customerInfo.firstName && 
                  bookingData.customerInfo.lastName && 
-                 bookingData.customerInfo.email && 
-                 bookingData.customerInfo.phone
+                 (bookingData.customerInfo.email || bookingData.customerInfo.phone)
         case 4: // Fra steg 3 til 4
           return bookingData.scheduledDate && bookingData.scheduledTime
         case 5: // Fra steg 4 til submit
@@ -872,6 +795,7 @@ export function MultiBookingWizard({
                         onServicesChange={(services) => 
                           updateVehicle(vehicle.id, { services })
                         }
+                        isAdminBooking={isAdminBooking}
                       />
                     )}
                   </CardContent>
@@ -997,7 +921,7 @@ export function MultiBookingWizard({
                 // For admin: Bekreftelse (oppsummering)
                 <BookingSummary
                   bookingData={bookingData}
-                  services={services}
+                  services={services as any}
                   vehicleTypes={vehicleTypes}
                   onNotesChange={(customerNotes) => 
                     setBookingData(prev => ({ ...prev, customerNotes }))
@@ -1031,7 +955,7 @@ export function MultiBookingWizard({
           {currentStep === 4 && (
             <BookingSummary
               bookingData={bookingData}
-              services={services}
+              services={services as any}
               vehicleTypes={vehicleTypes}
               onNotesChange={(customerNotes) => 
                 setBookingData(prev => ({ ...prev, customerNotes }))

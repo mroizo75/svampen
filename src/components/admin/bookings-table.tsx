@@ -72,12 +72,10 @@ interface BookingsTableProps {
 
 function getStatusBadge(status: string) {
   switch (status) {
-    case 'PENDING':
-      return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Venter</Badge>
     case 'CONFIRMED':
       return <Badge variant="default" className="bg-blue-100 text-blue-800">Bekreftet</Badge>
     case 'IN_PROGRESS':
-      return <Badge variant="default" className="bg-green-100 text-green-800">Pågår</Badge>
+      return <Badge variant="default" className="bg-purple-100 text-purple-800">Pågår</Badge>
     case 'COMPLETED':
       return <Badge variant="default" className="bg-green-100 text-green-800">Fullført</Badge>
     case 'CANCELLED':

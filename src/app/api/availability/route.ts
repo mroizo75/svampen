@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
           lte: endOfDay,
         },
         status: {
-          in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'],
+          in: ['CONFIRMED', 'IN_PROGRESS'],
         },
       },
       select: {

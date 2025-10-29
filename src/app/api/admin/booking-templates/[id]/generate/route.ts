@@ -200,7 +200,7 @@ export async function POST(
           scheduledDate: bookingDate,
           scheduledTime: new Date(`1970-01-01T${template.time}:00`),
           status: {
-            in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'],
+            in: ['CONFIRMED', 'IN_PROGRESS'],
           },
         },
       })

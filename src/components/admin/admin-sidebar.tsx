@@ -15,7 +15,9 @@ import {
   FileText,
   MessageSquare,
   Shield,
-  Building2
+  Building2,
+  Wrench,
+  HardHat
 } from 'lucide-react'
 
 const sidebarNavItems = [
@@ -28,6 +30,11 @@ const sidebarNavItems = [
     title: 'Kalender',
     href: '/admin/kalender',
     icon: CalendarDays,
+  },
+  {
+    title: 'Verksted Visning',
+    href: '/verksted',
+    icon: Wrench,
   },
   {
     title: 'Bestillinger',
@@ -63,6 +70,16 @@ const sidebarNavItems = [
     title: 'Rapporter',
     href: '/admin/rapporter',
     icon: BarChart3,
+  },
+  {
+    title: 'Utstyr & Opplæring',
+    href: '/admin/utstyr',
+    icon: HardHat,
+  },
+  {
+    title: 'Inspeksjonsrapport',
+    href: '/admin/utstyr/inspeksjon',
+    icon: Shield,
   },
   {
     title: 'SMS Test',
