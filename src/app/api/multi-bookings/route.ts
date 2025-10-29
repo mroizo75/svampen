@@ -68,13 +68,16 @@ export async function POST(request: NextRequest) {
         const isPlaceholderEmail = !emailToUse || emailToUse.trim() === '' || emailToUse === '*' || emailToUse.includes('*')
         
         if (isPlaceholderEmail && bookingData.isAdminBooking) {
-          // Generer unik placeholder e-post for admin-booking
+          // Generer GARANTERT unik placeholder e-post for admin-booking
+          // Bruk UUID + timestamp for å sikre at hver kunde får sin egen bruker
+          const uniqueId = crypto.randomUUID().split('-')[0] // Første del av UUID
           const timestamp = Date.now()
           const nameSlug = `${bookingData.customerInfo.firstName}-${bookingData.customerInfo.lastName}`
             .toLowerCase()
             .replace(/[^a-z0-9-]/g, '')
-          emailToUse = `noepost.${nameSlug}.${timestamp}@svampen.local`
-          console.log('⚠️ Placeholder e-post oppdaget (create account) - genererer unik e-post:', emailToUse)
+            .substring(0, 30) // Begrens lengde
+          emailToUse = `noepost.${nameSlug}.${uniqueId}.${timestamp}@svampen.local`
+          console.log('⚠️ Placeholder e-post oppdaget (create account) - genererer UNIK e-post:', emailToUse)
         } else if (isPlaceholderEmail && !bookingData.isAdminBooking) {
           // Kunde-booking må ha gyldig e-post
           return NextResponse.json(
@@ -182,13 +185,15 @@ export async function POST(request: NextRequest) {
         const isPlaceholderEmail = !emailToUse || emailToUse.trim() === '' || emailToUse === '*' || emailToUse.includes('*')
         
         if (isPlaceholderEmail) {
-          // Generer unik placeholder e-post basert på kundenavn og timestamp
+          // Generer GARANTERT unik placeholder e-post basert på UUID + timestamp
+          const uniqueId = crypto.randomUUID().split('-')[0] // Første del av UUID
           const timestamp = Date.now()
           const nameSlug = `${bookingData.customerInfo.firstName}-${bookingData.customerInfo.lastName}`
             .toLowerCase()
             .replace(/[^a-z0-9-]/g, '')
-          emailToUse = `noepost.${nameSlug}.${timestamp}@svampen.local`
-          console.log('⚠️ Placeholder e-post oppdaget - genererer unik e-post:', emailToUse)
+            .substring(0, 30) // Begrens lengde
+          emailToUse = `noepost.${nameSlug}.${uniqueId}.${timestamp}@svampen.local`
+          console.log('⚠️ Placeholder e-post oppdaget (guest) - genererer UNIK e-post:', emailToUse)
         }
         
         const existingUser = await prisma.user.findUnique({
