@@ -74,6 +74,9 @@ interface CustomerInfo {
   lastName: string
   email: string
   phone: string
+  address?: string
+  postalCode?: string
+  city?: string
   createAccount: boolean
   password?: string
   isExistingUser: boolean
@@ -133,6 +136,9 @@ export function MultiBookingWizard({
       phone: isAdminBooking 
         ? (prefilledCustomerInfo?.phone || '') 
         : (prefilledCustomerInfo?.phone || session?.user?.phone || user?.phone || ''),
+      address: isAdminBooking ? '' : (user?.address || ''),
+      postalCode: isAdminBooking ? '' : (user?.postalCode || ''),
+      city: isAdminBooking ? '' : (user?.city || ''),
       createAccount: false,
       isExistingUser: isAdminBooking ? false : !!(session?.user || user),
     },
@@ -140,6 +146,7 @@ export function MultiBookingWizard({
     customerNotes: '',
     totalPrice: 0,
     totalDuration: 0,
+    isAdminBooking,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -184,6 +191,9 @@ export function MultiBookingWizard({
           lastName: session.user.name || prev.customerInfo.lastName,
           email: session.user.email || prev.customerInfo.email,
           phone: session.user.phone || prev.customerInfo.phone,
+          address: session.user.address || prev.customerInfo.address,
+          postalCode: session.user.postalCode || prev.customerInfo.postalCode,
+          city: session.user.city || prev.customerInfo.city,
           createAccount: false,
           isExistingUser: true,
         }
@@ -217,6 +227,9 @@ export function MultiBookingWizard({
           phone: selectedCompany.contactPhone || '',
           firstName: selectedCompany.contactPerson?.firstName || '',
           lastName: selectedCompany.contactPerson?.lastName || '',
+          address: selectedCompany.address || '',
+          postalCode: selectedCompany.postalCode || '',
+          city: selectedCompany.city || '',
         }
       }))
     }
@@ -351,10 +364,11 @@ export function MultiBookingWizard({
           return bookingData.vehicles.length > 0 && 
                  bookingData.vehicles.every(v => v.vehicleTypeId && v.services.length > 0)
         case 3: // Fra steg 2 til 3
-          // Må ha navn OG enten e-post eller telefon
+          // For kundebestillinger: E-post er PÅKREVD
           return bookingData.customerInfo.firstName && 
                  bookingData.customerInfo.lastName && 
-                 (bookingData.customerInfo.email || bookingData.customerInfo.phone)
+                 bookingData.customerInfo.email && 
+                 bookingData.customerInfo.email.trim() !== ''
         case 4: // Fra steg 3 til 4
           return bookingData.scheduledDate && bookingData.scheduledTime
         case 5: // Fra steg 4 til submit
@@ -612,6 +626,9 @@ export function MultiBookingWizard({
                             lastName: prefilledCustomerInfo?.lastName || '',
                             email: prefilledCustomerInfo?.email || '',
                             phone: prefilledCustomerInfo?.phone || '',
+                            address: '',
+                            postalCode: '',
+                            city: '',
                           }
                         }))
                       }}

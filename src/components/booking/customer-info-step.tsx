@@ -25,6 +25,9 @@ interface CustomerInfo {
   lastName: string
   email: string
   phone: string
+  address?: string
+  postalCode?: string
+  city?: string
   createAccount: boolean
   password?: string
   isExistingUser: boolean
@@ -145,6 +148,37 @@ export function CustomerInfoStep({ customerInfo, onCustomerInfoChange, isAdminBo
                 onChange={(e) => handleInputChange('phone', e.target.value)}
                 placeholder="+47 xxx xx xxx"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="address">Adresse</Label>
+              <Input
+                id="address"
+                value={customerInfo.address || ''}
+                onChange={(e) => handleInputChange('address', e.target.value)}
+                placeholder="Gateadresse"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="postalCode">Postnummer</Label>
+                <Input
+                  id="postalCode"
+                  value={customerInfo.postalCode || ''}
+                  onChange={(e) => handleInputChange('postalCode', e.target.value)}
+                  placeholder="0000"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="city">Poststed</Label>
+                <Input
+                  id="city"
+                  value={customerInfo.city || ''}
+                  onChange={(e) => handleInputChange('city', e.target.value)}
+                  placeholder="By"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -296,7 +330,7 @@ export function CustomerInfoStep({ customerInfo, onCustomerInfoChange, isAdminBo
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">E-post {customerInfo.phone ? '(valgfri)' : '*'}</Label>
+            <Label htmlFor="email">E-post {isAdminBooking && customerInfo.phone ? '(valgfri)' : '*'}</Label>
             <Input
               id="email"
               type="email"
@@ -305,14 +339,17 @@ export function CustomerInfoStep({ customerInfo, onCustomerInfoChange, isAdminBo
               placeholder="din@email.com"
               pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
               title="Vennligst oppgi en gyldig e-postadresse (f.eks. navn@eksempel.no)"
+              required={!isAdminBooking}
             />
             <p className="text-xs text-gray-500">
-              {customerInfo.phone ? 'Valgfri når telefon er oppgitt' : 'Påkrevd hvis telefon ikke oppgis'}
+              {isAdminBooking 
+                ? (customerInfo.phone ? 'Valgfri når telefon er oppgitt' : 'Påkrevd hvis telefon ikke oppgis')
+                : 'E-post er påkrevd for å motta bestillingsbekreftelse'}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Telefonnummer {customerInfo.email ? '(valgfri)' : '*'}</Label>
+            <Label htmlFor="phone">Telefonnummer {isAdminBooking ? (customerInfo.email ? '(valgfri)' : '*') : '(valgfri)'}</Label>
             <Input
               id="phone"
               type="tel"
@@ -323,8 +360,41 @@ export function CustomerInfoStep({ customerInfo, onCustomerInfoChange, isAdminBo
               title="Vennligst oppgi et gyldig telefonnummer"
             />
             <p className="text-xs text-gray-500">
-              {customerInfo.email ? 'Valgfri når e-post er oppgitt' : 'Påkrevd hvis e-post ikke oppgis'}
+              {isAdminBooking 
+                ? (customerInfo.email ? 'Valgfri når e-post er oppgitt' : 'Påkrevd hvis e-post ikke oppgis')
+                : 'Valgfri - brukes for SMS-bekreftelse'}
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="address">Adresse</Label>
+            <Input
+              id="address"
+              value={customerInfo.address || ''}
+              onChange={(e) => handleInputChange('address', e.target.value)}
+              placeholder="Gateadresse"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="postalCode">Postnummer</Label>
+              <Input
+                id="postalCode"
+                value={customerInfo.postalCode || ''}
+                onChange={(e) => handleInputChange('postalCode', e.target.value)}
+                placeholder="0000"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="city">Poststed</Label>
+              <Input
+                id="city"
+                value={customerInfo.city || ''}
+                onChange={(e) => handleInputChange('city', e.target.value)}
+                placeholder="By"
+              />
+            </div>
           </div>
 
           <Separator />

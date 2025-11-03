@@ -98,6 +98,14 @@ export default async function BookingDetailsPage({
                 <p className="font-medium">{booking.user.firstName} {booking.user.lastName}</p>
                 <p className="text-sm">{booking.user.email}</p>
                 {booking.user.phone && <p className="text-sm">{booking.user.phone}</p>}
+                {(booking.user.address || booking.user.postalCode || booking.user.city) && (
+                  <div className="mt-2 text-sm">
+                    {booking.user.address && <p>{booking.user.address}</p>}
+                    {(booking.user.postalCode || booking.user.city) && (
+                      <p>{booking.user.postalCode} {booking.user.city}</p>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <p className="text-sm text-gray-600">Dato & Tid</p>

@@ -13,6 +13,10 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 interface BookingEmailData {
   customerName: string
   customerEmail: string
+  customerPhone?: string
+  customerAddress?: string
+  customerPostalCode?: string
+  customerCity?: string
   bookingId: string
   scheduledDate: string
   scheduledTime: string
@@ -248,6 +252,13 @@ export async function sendAdminNotificationEmail(data: BookingEmailData) {
       <li>${vehicle.vehicleType}: ${vehicle.services.map(s => s.name).join(', ')}</li>
     `).join('')
 
+    const addressInfo = data.customerAddress || data.customerPostalCode || data.customerCity
+      ? `
+            <p><strong>Adresse:</strong> ${data.customerAddress || 'Ikke oppgitt'}</p>
+            <p><strong>Postnr/Sted:</strong> ${data.customerPostalCode || ''} ${data.customerCity || ''}</p>
+          `
+      : ''
+
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -262,6 +273,8 @@ export async function sendAdminNotificationEmail(data: BookingEmailData) {
             <h2 style="color: #2563eb; margin-top: 20px;">Kunde</h2>
             <p><strong>Navn:</strong> ${data.customerName}</p>
             <p><strong>E-post:</strong> ${data.customerEmail}</p>
+            ${data.customerPhone ? `<p><strong>Telefon:</strong> ${data.customerPhone}</p>` : ''}
+            ${addressInfo}
             
             <h2 style="color: #2563eb; margin-top: 20px;">Bestillingsdetaljer</h2>
             <p><strong>ID:</strong> ${data.bookingId}</p>

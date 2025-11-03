@@ -25,6 +25,9 @@ interface CustomerInfo {
   lastName: string
   email: string
   phone: string
+  address?: string
+  postalCode?: string
+  city?: string
   createAccount: boolean
   password?: string
   isExistingUser: boolean
@@ -156,6 +159,9 @@ export async function POST(request: NextRequest) {
               firstName: bookingData.customerInfo.firstName,
               lastName: bookingData.customerInfo.lastName,
               phone: bookingData.customerInfo.phone || '',
+              address: bookingData.customerInfo.address || null,
+              postalCode: bookingData.customerInfo.postalCode || null,
+              city: bookingData.customerInfo.city || null,
               role: 'USER',
             }
           })
@@ -246,6 +252,9 @@ export async function POST(request: NextRequest) {
                 firstName: bookingData.customerInfo.firstName,
                 lastName: bookingData.customerInfo.lastName,
                 phone: bookingData.customerInfo.phone || '',
+                address: bookingData.customerInfo.address || null,
+                postalCode: bookingData.customerInfo.postalCode || null,
+                city: bookingData.customerInfo.city || null,
                 role: 'USER',
               }
             })
@@ -459,6 +468,10 @@ export async function POST(request: NextRequest) {
       const emailData = {
         customerName: `${bookingData.customerInfo.firstName} ${bookingData.customerInfo.lastName}`,
         customerEmail: bookingData.customerInfo.email,
+        customerPhone: bookingData.customerInfo.phone,
+        customerAddress: bookingData.customerInfo.address,
+        customerPostalCode: bookingData.customerInfo.postalCode,
+        customerCity: bookingData.customerInfo.city,
         bookingId: booking.id,
         scheduledDate: bookingData.scheduledDate,
         scheduledTime: bookingData.scheduledTime,
