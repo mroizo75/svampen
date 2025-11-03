@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
 import { AddCustomerDialog } from '@/components/admin/add-customer-dialog'
+import Link from 'next/link'
 
 async function getCustomers() {
   try {
@@ -297,17 +298,23 @@ export default async function AdminCustomersPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Se detaljer
+                            <DropdownMenuItem asChild>
+                              <Link href={`/admin/kunder/${customer.id}`}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Se detaljer
+                              </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Rediger kunde
+                            <DropdownMenuItem asChild>
+                              <Link href={`/admin/kunder/${customer.id}?edit=true`}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Rediger kunde
+                              </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Calendar className="mr-2 h-4 w-4" />
-                              Se bestillinger
+                            <DropdownMenuItem asChild>
+                              <Link href={`/admin/bestillinger?kunde=${customer.id}`}>
+                                <Calendar className="mr-2 h-4 w-4" />
+                                Se bestillinger
+                              </Link>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             {customer.role === 'USER' && (
