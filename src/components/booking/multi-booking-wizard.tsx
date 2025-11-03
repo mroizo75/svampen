@@ -91,6 +91,7 @@ interface BookingData {
   customerNotes: string
   totalPrice: number
   totalDuration: number
+  isAdminBooking?: boolean
 }
 
 interface MultiBookingWizardProps {
@@ -191,9 +192,9 @@ export function MultiBookingWizard({
           lastName: session.user.name || prev.customerInfo.lastName,
           email: session.user.email || prev.customerInfo.email,
           phone: session.user.phone || prev.customerInfo.phone,
-          address: session.user.address || prev.customerInfo.address,
-          postalCode: session.user.postalCode || prev.customerInfo.postalCode,
-          city: session.user.city || prev.customerInfo.city,
+          address: prev.customerInfo.address,
+          postalCode: prev.customerInfo.postalCode,
+          city: prev.customerInfo.city,
           createAccount: false,
           isExistingUser: true,
         }

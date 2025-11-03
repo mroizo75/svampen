@@ -108,7 +108,7 @@ declare module 'next-auth' {
     firstName?: string
     lastName?: string
     phone?: string
-    role: UserRole
+    role?: UserRole
   }
   interface Session {
     user: {
@@ -128,6 +128,6 @@ declare module 'next-auth/jwt' {
     firstName?: string
     lastName?: string
     phone?: string
-    role: UserRole
+    role?: UserRole
   }
 }
