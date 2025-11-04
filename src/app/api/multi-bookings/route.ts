@@ -332,6 +332,7 @@ export async function POST(request: NextRequest) {
     }
     
     const [year, month, day] = dateParts
+    // Opprett lokal dato (input er allerede i lokal tidssone)
     const bookingDate = new Date(year, month - 1, day, 0, 0, 0, 0)
     
     if (isNaN(bookingDate.getTime())) {
@@ -350,6 +351,7 @@ export async function POST(request: NextRequest) {
     }
     
     const [hours, minutes] = timeParts
+    // Opprett lokal tid (input er allerede i lokal tidssone)
     const bookingTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
 
     if (isNaN(bookingTime.getTime())) {
@@ -364,7 +366,7 @@ export async function POST(request: NextRequest) {
 
     // Sjekk om tiden er tilgjengelig (kun hvis IKKE admin override)
     if (!bookingData.isAdminBooking || !bookingData.adminOverride) {
-      // Hent alle bookinger for samme dag (bruk samme dato-parsing som availability)
+      // Hent alle bookinger for samme dag (lokal tidssone)
       const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
       const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
       

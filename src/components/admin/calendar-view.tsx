@@ -82,7 +82,7 @@ export default function CalendarView({
     const scheduledDate = new Date(booking.scheduledDate)
     const scheduledTime = new Date(booking.scheduledTime)
     
-    // Kombiner dato og tid
+    // Kombiner dato og tid - bruk lokal tidssone (samme som input)
     const start = new Date(
       scheduledDate.getFullYear(),
       scheduledDate.getMonth(),
