@@ -122,15 +122,17 @@ export default function WorkshopCalendarView({
 
   // Konverter bookinger til kalender-events
   const events: CalendarEvent[] = bookings.map(booking => {
-    const scheduledDate = new Date(booking.scheduledDate)
+    // scheduledTime inneholder allerede både dato og tid fra databasen
+    // MySQL lagrer som UTC, så vi må lese UTC-verdiene og behandle dem som lokal tid
     const scheduledTime = new Date(booking.scheduledTime)
     
+    // Hent UTC-verdier og bruk dem som lokale verdier (fordi de ble lagret som lokal tid)
     const startTime = new Date(
-      scheduledDate.getFullYear(),
-      scheduledDate.getMonth(),
-      scheduledDate.getDate(),
-      scheduledTime.getHours(),
-      scheduledTime.getMinutes()
+      scheduledTime.getUTCFullYear(),
+      scheduledTime.getUTCMonth(),
+      scheduledTime.getUTCDate(),
+      scheduledTime.getUTCHours(),
+      scheduledTime.getUTCMinutes()
     )
     
     const endTime = new Date(startTime.getTime() + booking.totalDuration * 60000)

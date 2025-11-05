@@ -172,11 +172,21 @@ export default function BookingDetailsPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Start tid:</span>
-                <span className="font-medium">{booking.scheduledTime.substring(11, 16)}</span>
+                <span className="font-medium">{(() => {
+                  const time = new Date(booking.scheduledTime)
+                  const hours = String(time.getUTCHours()).padStart(2, '0')
+                  const minutes = String(time.getUTCMinutes()).padStart(2, '0')
+                  return `${hours}:${minutes}`
+                })()}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Estimert ferdig:</span>
-                <span className="font-medium">{booking.estimatedEnd.substring(11, 16)}</span>
+                <span className="font-medium">{(() => {
+                  const time = new Date(booking.estimatedEnd)
+                  const hours = String(time.getUTCHours()).padStart(2, '0')
+                  const minutes = String(time.getUTCMinutes()).padStart(2, '0')
+                  return `${hours}:${minutes}`
+                })()}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Varighet:</span>

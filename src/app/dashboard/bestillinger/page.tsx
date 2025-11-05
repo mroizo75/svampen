@@ -125,7 +125,12 @@ export default function BookingsPage() {
                     </CardTitle>
                     <CardDescription className="flex items-center gap-2 mt-2">
                       <Clock className="h-4 w-4" />
-                      Kl. {booking.scheduledTime.substring(11, 16)} ({Math.floor(booking.totalDuration / 60)}t {booking.totalDuration % 60}min)
+                      Kl. {(() => {
+                        const time = new Date(booking.scheduledTime)
+                        const hours = String(time.getUTCHours()).padStart(2, '0')
+                        const minutes = String(time.getUTCMinutes()).padStart(2, '0')
+                        return `${hours}:${minutes}`
+                      })()} ({Math.floor(booking.totalDuration / 60)}t {booking.totalDuration % 60}min)
                     </CardDescription>
                   </div>
                   {getStatusBadge(booking.status)}
