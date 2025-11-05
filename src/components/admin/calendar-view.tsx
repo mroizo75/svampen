@@ -79,16 +79,17 @@ export default function CalendarView({
 
   // Konverter bookinger til kalender-events
   const events: CalendarEvent[] = bookings.map(booking => {
-    const scheduledDate = new Date(booking.scheduledDate)
+    // scheduledTime inneholder allerede både dato og tid fra databasen
+    // MySQL lagrer som UTC, så vi må lese UTC-verdiene og behandle dem som lokal tid
     const scheduledTime = new Date(booking.scheduledTime)
     
-    // Kombiner dato og tid - bruk lokal tidssone (samme som input)
+    // Hent UTC-verdier og bruk dem som lokale verdier (fordi de ble lagret som lokal tid)
     const start = new Date(
-      scheduledDate.getFullYear(),
-      scheduledDate.getMonth(),
-      scheduledDate.getDate(),
-      scheduledTime.getHours(),
-      scheduledTime.getMinutes()
+      scheduledTime.getUTCFullYear(),
+      scheduledTime.getUTCMonth(),
+      scheduledTime.getUTCDate(),
+      scheduledTime.getUTCHours(),
+      scheduledTime.getUTCMinutes()
     )
     
     // Legg til varighet for slutttid
