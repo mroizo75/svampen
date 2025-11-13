@@ -14,7 +14,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Car, Clock, User, Building2, Phone, Mail } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 
 moment.locale('nb')
 const localizer = momentLocalizer(moment)
@@ -82,7 +81,6 @@ export default function WorkshopCalendarView({
   businessHoursStart = '08:00',
   businessHoursEnd = '16:00' 
 }: WorkshopCalendarViewProps) {
-  const router = useRouter()
   const [view, setView] = useState<'work_week' | 'day'>('work_week')
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
@@ -98,7 +96,7 @@ export default function WorkshopCalendarView({
         const data = JSON.parse(event.data)
         if (data.type === 'booking_update') {
           console.log('✨ Booking-oppdatering mottatt, oppdaterer kalender...')
-          router.refresh()
+          window.location.reload()
         }
       } catch (error) {
         // Ignorer heartbeat meldinger
@@ -114,7 +112,7 @@ export default function WorkshopCalendarView({
       console.log('🔌 Kobler fra SSE')
       eventSource.close()
     }
-  }, [router])
+  }, [])
 
   // Parse åpningstider - fast 07:00-15:00 for verksted
   const calendarMinTime = new Date(2025, 0, 1, 7, 0)

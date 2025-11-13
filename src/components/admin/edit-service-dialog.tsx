@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import {
   Select,
@@ -23,33 +22,84 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Plus, Loader2, AlertCircle } from 'lucide-react'
+import { Loader2, AlertCircle, Save } from 'lucide-react'
+
+interface ServicePrice {
+  id: string
+  price: number
+  vehicleType: {
+    id: string
+    name: string
+  }
+}
+
+interface Service {
+  id: string
+  name: string
+  description: string
+  duration: number
+  category: 'MAIN' | 'ADDON' | 'SPECIAL'
+  isActive: boolean
+  isAdminOnly: boolean
+  servicePrices: ServicePrice[]
+}
 
 interface VehicleType {
   id: string
   name: string
 }
 
-interface AddServiceDialogProps {
+interface EditServiceDialogProps {
+  service: Service
   vehicleTypes: VehicleType[]
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSuccess?: () => void
 }
 
-export function AddServiceDialog({ vehicleTypes }: AddServiceDialogProps) {
-  const router = useRouter()
-  const [open, setOpen] = useState(false)
+export function EditServiceDialog({ 
+  service, 
+  vehicleTypes, 
+  open, 
+  onOpenChange,
+  onSuccess
+}: EditServiceDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    duration: '',
-    category: 'MAIN' as 'MAIN' | 'ADDON' | 'SPECIAL',
-    isAdminOnly: false,
+    name: service.name,
+    description: service.description,
+    duration: service.duration.toString(),
+    category: service.category,
+    isActive: service.isActive,
+    isAdminOnly: service.isAdminOnly,
   })
 
   // Priser for hver kjøretøy type
   const [prices, setPrices] = useState<Record<string, string>>({})
+
+  // Initialiser priser når dialog åpnes
+  useEffect(() => {
+    if (open) {
+      const priceMap: Record<string, string> = {}
+      service.servicePrices.forEach(sp => {
+        priceMap[sp.vehicleType.id] = sp.price.toString()
+      })
+      setPrices(priceMap)
+      
+      // Reset form data
+      setFormData({
+        name: service.name,
+        description: service.description,
+        duration: service.duration.toString(),
+        category: service.category,
+        isActive: service.isActive,
+        isAdminOnly: service.isAdminOnly,
+      })
+      setError(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -64,8 +114,8 @@ export function AddServiceDialog({ vehicleTypes }: AddServiceDialogProps) {
         throw new Error('Du må sette minst én pris')
       }
 
-      const response = await fetch('/api/services', {
-        method: 'POST',
+      const response = await fetch(`/api/services/${service.id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
@@ -78,18 +128,14 @@ export function AddServiceDialog({ vehicleTypes }: AddServiceDialogProps) {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || 'Kunne ikke opprette tjeneste')
+        throw new Error(data.message || 'Kunne ikke oppdatere tjeneste')
       }
 
-      // Lukk dialog og reset form
-      setFormData({ name: '', description: '', duration: '', category: 'MAIN', isAdminOnly: false })
-      setPrices({})
-      setOpen(false)
-      
-      // Trigger en re-fetch av data ved å reloade siden etter et kort delay
-      setTimeout(() => {
-        window.location.reload()
-      }, 100)
+      // Lukk dialog og kall success callback
+      onOpenChange(false)
+      if (onSuccess) {
+        onSuccess()
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'En feil oppstod')
     } finally {
@@ -98,19 +144,13 @@ export function AddServiceDialog({ vehicleTypes }: AddServiceDialogProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Ny tjeneste
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Legg til ny tjeneste</DialogTitle>
+            <DialogTitle>Rediger tjeneste</DialogTitle>
             <DialogDescription>
-              Opprett en ny tjeneste med priser for forskjellige kjøretøy typer
+              Oppdater tjenesteinformasjon og priser
             </DialogDescription>
           </DialogHeader>
 
@@ -186,6 +226,23 @@ export function AddServiceDialog({ vehicleTypes }: AddServiceDialogProps) {
 
             <div className="flex items-center space-x-2 border-t pt-4 pb-2">
               <Checkbox
+                id="isActive"
+                checked={formData.isActive}
+                onCheckedChange={(checked) => 
+                  setFormData({ ...formData, isActive: checked === true })
+                }
+                disabled={isLoading}
+              />
+              <Label 
+                htmlFor="isActive" 
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                Aktiv tjeneste
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-2 pb-2">
+              <Checkbox
                 id="isAdminOnly"
                 checked={formData.isAdminOnly}
                 onCheckedChange={(checked) => 
@@ -200,9 +257,6 @@ export function AddServiceDialog({ vehicleTypes }: AddServiceDialogProps) {
                 Kun for admin (bedriftsavtaler/spesialpriser)
               </Label>
             </div>
-            <p className="text-xs text-gray-500 ml-6 -mt-2">
-              Tjenester merket som "Kun for admin" vises ikke for vanlige kunder på booking-siden
-            </p>
 
             <div className="space-y-3 border-t pt-4">
               <Label>Priser per kjøretøy type *</Label>
@@ -240,7 +294,7 @@ export function AddServiceDialog({ vehicleTypes }: AddServiceDialogProps) {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={() => onOpenChange(false)}
               disabled={isLoading}
             >
               Avbryt
@@ -249,12 +303,12 @@ export function AddServiceDialog({ vehicleTypes }: AddServiceDialogProps) {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Oppretter...
+                  Lagrer...
                 </>
               ) : (
                 <>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Opprett
+                  <Save className="mr-2 h-4 w-4" />
+                  Lagre endringer
                 </>
               )}
             </Button>

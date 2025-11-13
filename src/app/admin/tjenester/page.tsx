@@ -1,3 +1,5 @@
+'use client'
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -27,94 +29,132 @@ import {
   DollarSign,
   BarChart3
 } from 'lucide-react'
-import { prisma } from '@/lib/prisma'
 import { AddVehicleTypeDialog } from '@/components/admin/add-vehicle-type-dialog'
 import { AddServiceDialog } from '@/components/admin/add-service-dialog'
+import { EditServiceDialog } from '@/components/admin/edit-service-dialog'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
-async function getServices() {
-  try {
-    const services = await prisma.service.findMany({
-      include: {
-        servicePrices: {
-          include: {
-            vehicleType: true,
-          },
-        },
-        bookingServices: {
-          include: {
-            bookingVehicle: {
-              include: {
-                booking: {
-                  select: {
-                    id: true,
-                    status: true,
-                    totalPrice: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    })
+interface ServicePrice {
+  id: string
+  price: number
+  vehicleType: {
+    id: string
+    name: string
+  }
+}
 
-    // Beregn statistikk for hver tjeneste
-    const servicesWithStats = services.map(service => {
-      // Hent unike bookings (siden samme booking kan ha flere tjenester)
-      const bookingMap = new Map()
-      service.bookingServices.forEach(bs => {
-        const booking = bs.bookingVehicle.booking
-        if (!bookingMap.has(booking.id)) {
-          bookingMap.set(booking.id, booking)
-        }
-      })
-      
-      const uniqueBookings = Array.from(bookingMap.values())
-      const totalBookings = uniqueBookings.length
-      const completedBookings = uniqueBookings.filter(b => b.status === 'COMPLETED').length
-      
-      // For omsetning, beregn basert på denne tjenestens prisbidrag
-      const totalRevenue = service.bookingServices
-        .filter(bs => bs.bookingVehicle.booking.status === 'COMPLETED')
-        .reduce((sum, bs) => sum + Number(bs.totalPrice), 0)
+interface Service {
+  id: string
+  name: string
+  description: string
+  duration: number
+  category: 'MAIN' | 'ADDON' | 'SPECIAL'
+  isActive: boolean
+  isAdminOnly: boolean
+  servicePrices: ServicePrice[]
+  stats: {
+    totalBookings: number
+    completedBookings: number
+    totalRevenue: number
+  }
+}
 
-      return {
-        ...service,
-        stats: {
-          totalBookings,
-          completedBookings,
-          totalRevenue,
-        },
+interface VehicleType {
+  id: string
+  name: string
+  description: string | null
+  createdAt: Date
+}
+
+export default function AdminServicesPage() {
+  const [services, setServices] = useState<Service[]>([])
+  const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([])
+  const [loading, setLoading] = useState(true)
+  const [editingService, setEditingService] = useState<Service | null>(null)
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    try {
+      const [servicesRes, vehicleTypesRes] = await Promise.all([
+        fetch('/api/admin/services-with-stats'),
+        fetch('/api/vehicle-types'),
+      ])
+
+      if (servicesRes.ok) {
+        const servicesData = await servicesRes.json()
+        setServices(servicesData)
       }
-    })
 
-    return servicesWithStats
-  } catch (error) {
-    console.error('Error fetching services:', error)
-    return []
+      if (vehicleTypesRes.ok) {
+        const vehicleTypesData = await vehicleTypesRes.json()
+        setVehicleTypes(vehicleTypesData)
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error)
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
-async function getVehicleTypes() {
-  try {
-    const vehicleTypes = await prisma.vehicleType.findMany({
-      orderBy: {
-        name: 'asc',
-      },
-    })
-    return vehicleTypes
-  } catch (error) {
-    console.error('Error fetching vehicle types:', error)
-    return []
+  const handleToggleActive = async (service: Service) => {
+    try {
+      const response = await fetch(`/api/services/${service.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...service,
+          isActive: !service.isActive,
+        }),
+      })
+
+      if (response.ok) {
+        window.location.reload()
+      }
+    } catch (error) {
+      console.error('Error toggling service:', error)
+    }
   }
-}
 
-export default async function AdminServicesPage() {
-  const services = await getServices()
-  const vehicleTypes = await getVehicleTypes()
+  const handleDelete = async (service: Service) => {
+    const bookingWarning = service.stats.totalBookings > 0 
+      ? `\n\nADVARSEL: Denne tjenesten er brukt i ${service.stats.totalBookings} bestillinger.` 
+      : ''
+    
+    if (!confirm(`Er du sikker på at du vil slette tjenesten "${service.name}"?${bookingWarning}`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/services/${service.id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        window.location.reload()
+      } else {
+        const data = await response.json()
+        alert(data.message || 'Kunne ikke slette tjeneste')
+      }
+    } catch (error) {
+      console.error('Error deleting service:', error)
+      alert('En feil oppstod ved sletting')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Laster tjenester...</p>
+        </div>
+      </div>
+    )
+  }
 
   const activeServices = services.filter(s => s.isActive).length
   const totalRevenue = services.reduce((sum, s) => sum + s.stats.totalRevenue, 0)
@@ -225,7 +265,14 @@ export default async function AdminServicesPage() {
                       <TableRow key={service.id}>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{service.name}</div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{service.name}</span>
+                              {service.isAdminOnly && (
+                                <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-300">
+                                  Kun admin
+                                </Badge>
+                              )}
+                            </div>
                             <div className="text-sm text-gray-500 max-w-xs truncate">
                               {service.description}
                             </div>
@@ -276,23 +323,18 @@ export default async function AdminServicesPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Se detaljer
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setEditingService(service)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Rediger tjeneste
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <DollarSign className="mr-2 h-4 w-4" />
-                                Administrer priser
-                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleToggleActive(service)}>
                                 {service.isActive ? "Deaktiver" : "Aktiver"}
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="text-red-600">
+                              <DropdownMenuItem 
+                                className="text-red-600"
+                                onClick={() => handleDelete(service)}
+                              >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Slett tjeneste
                               </DropdownMenuItem>
@@ -359,6 +401,23 @@ export default async function AdminServicesPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      {editingService && (
+        <EditServiceDialog
+          service={editingService}
+          vehicleTypes={vehicleTypes}
+          open={!!editingService}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingService(null)
+            }
+          }}
+          onSuccess={() => {
+            window.location.reload()
+          }}
+        />
+      )}
     </div>
   )
 }

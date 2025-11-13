@@ -5,9 +5,16 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions)
+    
+    // Sjekk om bruker er admin eller ansatt
+    const isAdminOrStaff = session?.user && ['ADMIN', 'ANSATT'].includes(session.user.role || '')
+    
     const services = await prisma.service.findMany({
       where: {
         isActive: true,
+        // Hvis IKKE admin/ansatt, filtrer bort admin-only tjenester
+        ...(isAdminOrStaff ? {} : { isAdminOnly: false }),
       },
       include: {
         servicePrices: {
@@ -54,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, duration, category, prices } = body
+    const { name, description, duration, category, prices, isAdminOnly } = body
 
     // Valider påkrevde felter
     if (!name || !description || !duration || !category) {
@@ -84,6 +91,7 @@ export async function POST(request: NextRequest) {
         duration: Number(duration),
         category,
         isActive: true,
+        isAdminOnly: isAdminOnly === true, // Standard false hvis ikke spesifisert
         servicePrices: {
           create: Object.entries(prices).map(([vehicleTypeId, price]) => ({
             vehicleTypeId,

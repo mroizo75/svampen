@@ -6,8 +6,7 @@ import 'moment/locale/nb'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import QuickBookingDialog from './quick-booking-dialog'
 
 moment.locale('nb')
@@ -64,10 +63,38 @@ export default function CalendarView({
   businessHoursStart = '08:00',
   businessHoursEnd = '16:00' 
 }: CalendarViewProps) {
-  const router = useRouter()
   const [view, setView] = useState<'month' | 'week' | 'day'>('week')
   const [quickBookingOpen, setQuickBookingOpen] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<{ date: Date; time?: Date } | null>(null)
+
+  // SSE for sanntidsoppdateringer
+  useEffect(() => {
+    console.log('🔌 Kobler til SSE for booking-oppdateringer...')
+    
+    const eventSource = new EventSource('/api/bookings/stream')
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        if (data.type === 'booking_update') {
+          console.log('✨ Booking-oppdatering mottatt, oppdaterer kalender...')
+          window.location.reload()
+        }
+      } catch (error) {
+        // Ignorer heartbeat meldinger
+      }
+    }
+    
+    eventSource.onerror = (error) => {
+      console.error('❌ SSE connection error:', error)
+      eventSource.close()
+    }
+    
+    return () => {
+      console.log('🔌 Kobler fra SSE')
+      eventSource.close()
+    }
+  }, [])
 
   // Parse åpningstider
   const [startHour, startMinute] = businessHoursStart.split(':').map(Number)
@@ -154,7 +181,7 @@ export default function CalendarView({
 
   // Når man klikker på en event
   const handleSelectEvent = (event: CalendarEvent) => {
-    router.push(`/admin/bestillinger/${event.resource.id}`)
+    window.location.href = `/admin/bestillinger/${event.resource.id}`
   }
 
   // Når man klikker på en ledig tid
