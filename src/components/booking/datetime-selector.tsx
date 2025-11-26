@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { CalendarIcon, Clock, AlertTriangle, Info } from 'lucide-react'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale'
+import { isNorwegianHoliday, isWeekend } from '@/lib/norwegian-holidays'
 
 interface DateTimeSelectorProps {
   selectedDate?: Date
@@ -20,6 +21,11 @@ interface DateTimeSelectorProps {
   adminOverride?: boolean
   businessHoursStart?: string
   businessHoursEnd?: string
+}
+
+interface ClosedDate {
+  id: string
+  date: Date
 }
 
 export function DateTimeSelector({
@@ -36,6 +42,28 @@ export function DateTimeSelector({
   const [availableTimes, setAvailableTimes] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [specialMessage, setSpecialMessage] = useState<string>('')
+  const [closedDates, setClosedDates] = useState<ClosedDate[]>([])
+
+  // Hent stengte dager
+  useEffect(() => {
+    const fetchClosedDates = async () => {
+      try {
+        const response = await fetch('/api/admin/closed-dates')
+        if (response.ok) {
+          const data = await response.json()
+          setClosedDates(data.map((d: any) => ({
+            ...d,
+            // Parse dato uten timezone-konvertering
+            date: new Date(String(d.date).split('T')[0] + 'T12:00:00'),
+          })))
+        }
+      } catch (error) {
+        console.error('Error fetching closed dates:', error)
+      }
+    }
+    
+    fetchClosedDates()
+  }, [])
 
   // Fetch available times when date or duration changes
   useEffect(() => {
@@ -180,7 +208,28 @@ export function DateTimeSelector({
               disabled={(date) => {
                 const today = new Date()
                 today.setHours(0, 0, 0, 0)
-                return date < today || date.getDay() === 0 || date.getDay() === 6
+                
+                // Sjekk om dato er i fortiden
+                if (date < today) return true
+                
+                // Sjekk om dato er helg (lørdag eller søndag)
+                if (isWeekend(date)) return true
+                
+                // Sjekk om dato er norsk helligdag
+                if (isNorwegianHoliday(date).isHoliday) return true
+                
+                // Sjekk om dato er stengt (fra database)
+                const isClosed = closedDates.some(closedDate => {
+                  const checkYear = closedDate.date.getFullYear()
+                  const checkMonth = closedDate.date.getMonth()
+                  const checkDay = closedDate.date.getDate()
+                  
+                  return date.getFullYear() === checkYear &&
+                         date.getMonth() === checkMonth &&
+                         date.getDate() === checkDay
+                })
+                
+                return isClosed
               }}
               initialFocus
             />

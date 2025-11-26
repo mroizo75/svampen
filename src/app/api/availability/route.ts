@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isNorwegianHoliday, isWeekend } from '@/lib/norwegian-holidays'
 
 export async function GET(request: NextRequest) {
   // Hent åpningstider og minimum forhåndsbestilling fra admin settings
@@ -44,10 +45,52 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ availableTimes: [] })
     }
 
+    // Sjekk om dagen er helg
+    if (isWeekend(selectedDate)) {
+      return NextResponse.json({ 
+        availableTimes: [],
+        message: 'Vi holder stengt i helgene',
+        isClosed: true
+      })
+    }
+
+    // Sjekk om dagen er norsk helligdag
+    const holidayCheck = isNorwegianHoliday(selectedDate)
+    if (holidayCheck.isHoliday) {
+      return NextResponse.json({ 
+        availableTimes: [],
+        message: `Vi holder stengt på ${holidayCheck.name}`,
+        isClosed: true
+      })
+    }
+
+    // Sjekk om dagen er manuelt stengt (fra database)
+    // Viktig: Normaliser dato til middag for sammenligning
+    const startOfSelectedDate = new Date(selectedDate)
+    startOfSelectedDate.setHours(0, 0, 0, 0)
+    const endOfSelectedDate = new Date(selectedDate)
+    endOfSelectedDate.setHours(23, 59, 59, 999)
+    
+    const closedDate = await prisma.closedDate.findFirst({
+      where: {
+        date: {
+          gte: startOfSelectedDate,
+          lte: endOfSelectedDate,
+        },
+      },
+    })
+    
+    if (closedDate) {
+      return NextResponse.json({ 
+        availableTimes: [],
+        message: `Vi holder stengt denne dagen: ${closedDate.reason}`,
+        isClosed: true
+      })
+    }
+
     // Beregn minimum booking tid basert på innstillinger
     const now = new Date()
     const minimumBookingTime = new Date(now.getTime() + (minAdvanceHours * 60 * 60 * 1000))
-    console.log(`[Availability] Minimum advance booking: ${minAdvanceHours} hours (from ${now.toLocaleString('nb-NO')} to ${minimumBookingTime.toLocaleString('nb-NO')})`)
 
     // Hent eksisterende bestillinger for datoen (alle aktive bookinger)
     const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
@@ -69,19 +112,6 @@ export async function GET(request: NextRequest) {
         estimatedEnd: true,
         totalDuration: true,
       },
-    })
-    
-    // Debug logging
-    console.log('')
-    console.log('='.repeat(80))
-    console.log(`[Availability] Checking date: ${date}`)
-    console.log(`[Availability] Requested duration: ${duration} minutes`)
-    console.log(`[Availability] Found ${existingBookings.length} existing booking(s):`)
-    existingBookings.forEach(booking => {
-      const start = new Date(booking.scheduledTime)
-      const end = new Date(booking.estimatedEnd)
-      console.log(`  - ${booking.id.substring(0, 8)}: ${start.toISOString()} to ${end.toISOString()}`)
-      console.log(`    (Local: ${start.toLocaleString('nb-NO')} - ${end.toLocaleString('nb-NO')})`)
     })
 
     // Hent tilgjengelige tidsslots for datoen
@@ -110,13 +140,11 @@ export async function GET(request: NextRequest) {
     const durationHours = duration / 60
     if (durationHours > 6) {
       defaultEndHour = Math.min(endHour + 2, 20) // Utvid maks til kl. 20:00
-      console.log(`[Availability] Long service detected (${durationHours.toFixed(1)}h), extending working hours to ${defaultEndHour}:00`)
     }
     
     // Hvis tjenesten fortsatt er for lang, gi beskjed
     const maxServiceDuration = (defaultEndHour - defaultStartHour) * 60
     if (duration > maxServiceDuration) {
-      console.log(`[Availability] Service duration (${duration}min) exceeds max day capacity (${maxServiceDuration}min)`)
       return NextResponse.json({ 
         availableTimes: [],
         message: `Denne kombinasjonen av tjenester (${Math.floor(duration/60)}t ${duration%60}min) er for lang for én dag. Vennligst book tjenestene på separate dager, eller kontakt oss for å lage en spesialtilpasset booking.`,
@@ -141,15 +169,6 @@ export async function GET(request: NextRequest) {
         // - Ny booking starter ETTER eksisterende slutter (proposedStart >= bookingEnd)
         const overlaps = proposedStart < bookingEnd && proposedEnd > bookingStart
         
-        if (overlaps) {
-          const proposedStartLocal = proposedStart.toLocaleString('nb-NO', { hour: '2-digit', minute: '2-digit' })
-          const proposedEndLocal = proposedEnd.toLocaleString('nb-NO', { hour: '2-digit', minute: '2-digit' })
-          const bookingStartLocal = bookingStart.toLocaleString('nb-NO', { hour: '2-digit', minute: '2-digit' })
-          const bookingEndLocal = bookingEnd.toLocaleString('nb-NO', { hour: '2-digit', minute: '2-digit' })
-          
-          console.log(`  [BLOCKED] ${proposedStartLocal}-${proposedEndLocal} overlaps with booking ${booking.id.substring(0, 8)} (${bookingStartLocal}-${bookingEndLocal})`)
-        }
-        
         return overlaps
       })
       
@@ -173,13 +192,11 @@ export async function GET(request: NextRequest) {
           const endHour = proposedEnd.getHours()
           const endMinute = proposedEnd.getMinutes()
           if (endHour > defaultEndHour || (endHour === defaultEndHour && endMinute > 0)) {
-            console.log(`  [Skip] ${timeString} - would end at ${endHour}:${endMinute.toString().padStart(2, '0')} (after closing time ${defaultEndHour}:00)`)
             continue
           }
           
           // Sjekk minimum forhåndsbestilling
           if (proposedStart < minimumBookingTime) {
-            console.log(`  [Skip] ${timeString} - too soon (minimum ${minAdvanceHours}h advance required)`)
             continue
           }
           
@@ -187,7 +204,6 @@ export async function GET(request: NextRequest) {
           const available = isTimeSlotAvailable(proposedStart, proposedEnd)
           if (available) {
             availableTimes.push(timeString)
-            console.log(`  [Available] ${timeString} (ends at ${endHour}:${endMinute.toString().padStart(2, '0')})`)
           }
         }
       }
@@ -199,7 +215,6 @@ export async function GET(request: NextRequest) {
         
         // Sjekk minimum forhåndsbestilling
         if (startTime < minimumBookingTime) {
-          console.log(`  [Skip] ${timeString} - too soon (minimum ${minAdvanceHours}h advance required)`)
           return
         }
         
@@ -212,10 +227,6 @@ export async function GET(request: NextRequest) {
         }
       })
     }
-
-    console.log(`[Availability] Returning ${availableTimes.length} available time(s)`)
-    console.log('='.repeat(80))
-    console.log('')
     
     return NextResponse.json({ availableTimes })
   } catch (error) {

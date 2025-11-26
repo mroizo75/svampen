@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    console.log(`✅ Admin bruker opprettet: ${admin.email}`)
+    // Admin user created successfully
 
     return NextResponse.json(
       { 

@@ -366,6 +366,28 @@ model AdminSettings {
   @@map("admin_settings")
 }
 
+// Stengte dager (helligdager, ferie, etc.)
+model ClosedDate {
+  id          String          @id @default(cuid())
+  date        DateTime        // Datoen som er stengt
+  reason      String          // Grunn (f.eks. "1. nyttårsdag", "Sommerferie")
+  type        ClosedDateType  @default(MANUAL)
+  isRecurring Boolean         @default(false) // For årlige helligdager
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  @@unique([date, type])
+  @@map("closed_dates")
+}
+
+// Type stengt dag
+enum ClosedDateType {
+  HOLIDAY     // Helligdag
+  VACATION    // Ferie
+  MANUAL      // Manuelt stengt
+  OTHER       // Annet
+}
+
 // Lisenssystem
 model License {
   id                String        @id @default(cuid())

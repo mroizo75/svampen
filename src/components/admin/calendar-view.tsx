@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useState, useEffect } from 'react'
 import QuickBookingDialog from './quick-booking-dialog'
+import { getNorwegianHolidays } from '@/lib/norwegian-holidays'
 
 moment.locale('nb')
 const localizer = momentLocalizer(moment)
@@ -58,6 +59,13 @@ interface CalendarViewProps {
   businessHoursEnd?: string
 }
 
+interface ClosedDate {
+  id: string
+  date: Date
+  reason: string
+  type: 'HOLIDAY' | 'VACATION' | 'MANUAL' | 'OTHER'
+}
+
 export default function CalendarView({ 
   bookings, 
   businessHoursStart = '08:00',
@@ -66,6 +74,27 @@ export default function CalendarView({
   const [view, setView] = useState<'month' | 'week' | 'day'>('week')
   const [quickBookingOpen, setQuickBookingOpen] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<{ date: Date; time?: Date } | null>(null)
+  const [closedDates, setClosedDates] = useState<ClosedDate[]>([])
+
+  // Hent stengte dager
+  useEffect(() => {
+    const fetchClosedDates = async () => {
+      try {
+        const response = await fetch('/api/admin/closed-dates')
+        if (response.ok) {
+          const data = await response.json()
+          setClosedDates(data.map((d: ClosedDate) => ({
+            ...d,
+            date: new Date(d.date),
+          })))
+        }
+      } catch (error) {
+        console.error('Error fetching closed dates:', error)
+      }
+    }
+    
+    fetchClosedDates()
+  }, [])
 
   // SSE for sanntidsoppdateringer
   useEffect(() => {
@@ -105,7 +134,7 @@ export default function CalendarView({
   const calendarMaxTime = new Date(2025, 0, 1, Math.min(23, endHour + 1), 0)
 
   // Konverter bookinger til kalender-events
-  const events: CalendarEvent[] = bookings.map(booking => {
+  const bookingEvents: CalendarEvent[] = bookings.map(booking => {
     // scheduledTime inneholder allerede både dato og tid fra databasen
     // MySQL lagrer som UTC, så vi må lese UTC-verdiene og behandle dem som lokal tid
     const scheduledTime = new Date(booking.scheduledTime)
@@ -140,11 +169,68 @@ export default function CalendarView({
     }
   })
 
+  // Legg til stengte dager som hele-dags-events
+  const closedDateEvents: CalendarEvent[] = closedDates.map(closedDate => {
+    const date = new Date(closedDate.date)
+    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0)
+    const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59)
+    
+    return {
+      title: `STENGT: ${closedDate.reason}`,
+      start,
+      end,
+      allDay: true,
+      resource: {
+        id: `closed-${closedDate.id}`,
+        status: 'CLOSED',
+        customerName: '',
+        vehicleCount: 0,
+        totalPrice: 0,
+        duration: 0,
+      },
+    }
+  })
+
+  // Legg til norske helligdager for inneværende og neste år
+  const currentYear = new Date().getFullYear()
+  const norwegianHolidays = [
+    ...getNorwegianHolidays(currentYear),
+    ...getNorwegianHolidays(currentYear + 1),
+  ]
+
+  const holidayEvents: CalendarEvent[] = norwegianHolidays.map(holiday => {
+    const date = holiday.date
+    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0)
+    const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59)
+    
+    return {
+      title: `🇳🇴 ${holiday.name}`,
+      start,
+      end,
+      allDay: true,
+      resource: {
+        id: `holiday-${holiday.name}-${date.getFullYear()}`,
+        status: 'CLOSED',
+        customerName: '',
+        vehicleCount: 0,
+        totalPrice: 0,
+        duration: 0,
+      },
+    }
+  })
+
+  const events = [...bookingEvents, ...closedDateEvents, ...holidayEvents]
+
   // Farger basert på status med forbedret visning
   const eventStyleGetter = (event: CalendarEvent) => {
     let backgroundColor = '#3b82f6' // blue (default)
+    let cursor = 'pointer'
     
     switch (event.resource.status) {
+      case 'CLOSED':
+        backgroundColor = '#ef4444' // red for stengte dager
+        cursor = 'default'
+        break
       case 'CONFIRMED':
         backgroundColor = '#3b82f6' // blue
         break
@@ -162,25 +248,28 @@ export default function CalendarView({
     return {
       style: {
         backgroundColor,
-        borderRadius: '8px',
-        opacity: 0.95,
+        borderRadius: event.resource.status === 'CLOSED' ? '4px' : '8px',
+        opacity: event.resource.status === 'CLOSED' ? 0.8 : 0.95,
         color: 'white',
         border: '2px solid white',
         display: 'flex',
         flexDirection: 'column' as const,
         fontSize: '13px',
         padding: '6px 8px',
-        fontWeight: '500',
+        fontWeight: event.resource.status === 'CLOSED' ? '600' : '500',
         lineHeight: '1.3',
         overflow: 'hidden',
         boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-        cursor: 'pointer',
+        cursor,
       },
     }
   }
 
   // Når man klikker på en event
   const handleSelectEvent = (event: CalendarEvent) => {
+    if (event.resource.status === 'CLOSED') {
+      return
+    }
     window.location.href = `/admin/bestillinger/${event.resource.id}`
   }
 
@@ -252,6 +341,10 @@ export default function CalendarView({
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 rounded-md border-2 border-white shadow-sm" style={{ backgroundColor: '#dc2626' }}></div>
             <span className="text-sm font-medium text-gray-700">Ikke møtt opp</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded border-2 border-white shadow-sm" style={{ backgroundColor: '#ef4444' }}></div>
+            <span className="text-sm font-medium text-gray-700">Stengt dag</span>
           </div>
         </div>
       </Card>

@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    console.log(`✅ Ny kunde opprettet av admin: ${newCustomer.email}`)
+    // Customer created successfully
 
     return NextResponse.json(
       {

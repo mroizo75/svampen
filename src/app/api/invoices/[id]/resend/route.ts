@@ -88,7 +88,7 @@ export async function POST(
       })
     }
 
-    console.log(`✅ Faktura ${invoice.invoiceNumber} sendt på nytt til ${invoice.booking.user.email}`)
+    // Invoice resent successfully
 
     return NextResponse.json({
       message: 'Faktura sendt på nytt',

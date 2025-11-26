@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs'
 import { sendBookingConfirmationEmail, sendAdminNotificationEmail } from '@/lib/email'
 import { sendBookingConfirmationSMS } from '@/lib/sms'
 import { notifyBookingUpdate } from '@/lib/sse-notifications'
+import { isNorwegianHoliday, isWeekend } from '@/lib/norwegian-holidays'
 
 interface BookingVehicleData {
   vehicleTypeId: string
@@ -58,12 +59,6 @@ export async function POST(request: NextRequest) {
     // If admin is booking for a customer, handle customer info
     // OR if not logged in, handle guest/new user registration
     if (bookingData.isAdminBooking || !session) {
-      console.log('🔍 Håndterer kundeinformasjon:', {
-        isAdminBooking: bookingData.isAdminBooking,
-        hasSession: !!session,
-        customerEmail: bookingData.customerInfo.email,
-        adminEmail: session?.user?.email || 'ingen'
-      })
       // Check if user wants to create account
       if (bookingData.customerInfo.createAccount) {
         // KRITISK: Hvis e-post er placeholder for admin-booking, generer UNIK e-post
@@ -80,7 +75,6 @@ export async function POST(request: NextRequest) {
             .replace(/[^a-z0-9-]/g, '')
             .substring(0, 30) // Begrens lengde
           emailToUse = `noepost.${nameSlug}.${uniqueId}.${timestamp}@svampen.local`
-          console.log('⚠️ Placeholder e-post oppdaget (create account) - genererer UNIK e-post:', emailToUse)
         } else if (isPlaceholderEmail && !bookingData.isAdminBooking) {
           // Kunde-booking må ha gyldig e-post
           return NextResponse.json(
@@ -126,11 +120,6 @@ export async function POST(request: NextRequest) {
             phone: existingUser.phone,
             role: existingUser.role,
           }
-          
-          console.log('✅ Bruker eksisterende kunde:', {
-            email: existingUser.email,
-            name: `${existingUser.firstName} ${existingUser.lastName}`
-          })
         } else {
           // Create new user
           // For admin bookings, password is not required (will be set to random)
@@ -199,7 +188,6 @@ export async function POST(request: NextRequest) {
             .replace(/[^a-z0-9-]/g, '')
             .substring(0, 30) // Begrens lengde
           emailToUse = `noepost.${nameSlug}.${uniqueId}.${timestamp}@svampen.local`
-          console.log('⚠️ Placeholder e-post oppdaget (guest) - genererer UNIK e-post:', emailToUse)
         }
         
         const existingUser = await prisma.user.findUnique({
@@ -234,11 +222,6 @@ export async function POST(request: NextRequest) {
             phone: existingUser.phone,
             role: existingUser.role,
           }
-          
-          console.log('✅ Bruker eksisterende kunde (guest):', {
-            email: existingUser.email,
-            name: `${existingUser.firstName} ${existingUser.lastName}`
-          })
         } else {
           // Create guest user (with random password for security)
           try {
@@ -364,6 +347,48 @@ export async function POST(request: NextRequest) {
 
     const estimatedEnd = new Date(bookingTime.getTime() + bookingData.totalDuration * 60000)
 
+    // Sjekk om dagen er stengt (kun hvis IKKE admin override)
+    if (!bookingData.isAdminBooking || !bookingData.adminOverride) {
+      // Sjekk helg
+      if (isWeekend(bookingDate)) {
+        return NextResponse.json(
+          { message: 'Vi holder stengt i helgene' },
+          { status: 400 }
+        )
+      }
+
+      // Sjekk norsk helligdag
+      const holidayCheck = isNorwegianHoliday(bookingDate)
+      if (holidayCheck.isHoliday) {
+        return NextResponse.json(
+          { message: `Vi holder stengt på ${holidayCheck.name}` },
+          { status: 400 }
+        )
+      }
+
+      // Sjekk manuelt stengte dager (fra database)
+      // Normaliser dato for sammenligning
+      const startOfBookingDate = new Date(bookingDate)
+      startOfBookingDate.setHours(0, 0, 0, 0)
+      const endOfBookingDate = new Date(bookingDate)
+      endOfBookingDate.setHours(23, 59, 59, 999)
+      
+      const closedDate = await prisma.closedDate.findFirst({
+        where: {
+          date: {
+            gte: startOfBookingDate,
+            lte: endOfBookingDate,
+          },
+        },
+      })
+      
+      if (closedDate) {
+        return NextResponse.json(
+          { message: `Vi holder stengt denne dagen: ${closedDate.reason}` },
+          { status: 400 }
+        )
+      }
+    }
 
     // Sjekk om tiden er tilgjengelig (kun hvis IKKE admin override)
     if (!bookingData.isAdminBooking || !bookingData.adminOverride) {
@@ -410,7 +435,7 @@ export async function POST(request: NextRequest) {
         )
       }
     } else {
-      console.log('🔓 Admin override aktivert - hopper over tilgjengelighetssjekk for booking')
+      // Admin override active - skipping availability check
     }
     
 
@@ -508,14 +533,6 @@ export async function POST(request: NextRequest) {
         ? bookingData.sendSms === true 
         : true // Default true for kunde-bookinger
       
-      console.log('📱 SMS Debug:', {
-        isAdminBooking: bookingData.isAdminBooking,
-        sendSmsFlag: bookingData.sendSms,
-        shouldSendSms,
-        phone: bookingData.customerInfo.phone,
-        hasPhone: !!bookingData.customerInfo.phone
-      })
-      
       if (shouldSendSms && bookingData.customerInfo.phone) {
         // Fjern alle mellomrom og spesialtegn, behold kun siffer og eventuelt +
         let phoneDigits = bookingData.customerInfo.phone.replace(/[\s\-()]/g, '')
@@ -530,12 +547,6 @@ export async function POST(request: NextRequest) {
         // Sjekk om det er et norsk mobilnummer (starter med 4 eller 9, og er 8 siffer)
         const isMobileNumber = /^[49]\d{7}$/.test(phoneDigits)
         
-        console.log('📱 Phone validation:', {
-          original: bookingData.customerInfo.phone,
-          cleaned: phoneDigits,
-          isMobileNumber
-        })
-        
         if (isMobileNumber) {
           const smsResult = await sendBookingConfirmationSMS({
             customerName: emailData.customerName,
@@ -545,17 +556,9 @@ export async function POST(request: NextRequest) {
             bookingId: booking.id,
           })
           if (!smsResult.success) {
-            console.error('❌ Failed to send confirmation SMS:', smsResult.error)
-          } else {
-            console.log(`✅ SMS confirmation sent to mobile number: ${bookingData.customerInfo.phone}`)
+            console.error('Failed to send confirmation SMS:', smsResult.error)
           }
-        } else {
-          console.log(`ℹ️ Skipping SMS - not a mobile number: ${bookingData.customerInfo.phone} (digits: ${phoneDigits})`)
         }
-      } else if (bookingData.isAdminBooking && !bookingData.sendSms) {
-        console.log('ℹ️ SMS skipped - admin chose not to send SMS')
-      } else if (!bookingData.customerInfo.phone) {
-        console.log('ℹ️ SMS skipped - no phone number provided')
       }
     } catch (emailError) {
       // Vi logger feilen, men lar ikke e-post feil stoppe booking prosessen
