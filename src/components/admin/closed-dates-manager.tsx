@@ -31,6 +31,8 @@ interface ClosedDate {
   reason: string
   type: 'HOLIDAY' | 'VACATION' | 'MANUAL' | 'OTHER'
   isRecurring: boolean
+  startTime?: string | null
+  endTime?: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -45,11 +47,15 @@ export function ClosedDatesManager() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [showPeriodForm, setShowPeriodForm] = useState(false)
   const [newDate, setNewDate] = useState('')
+  const [newStartTime, setNewStartTime] = useState('08:00')
+  const [newEndTime, setNewEndTime] = useState('16:00')
   const [newReason, setNewReason] = useState('')
   const [newType, setNewType] = useState<'HOLIDAY' | 'VACATION' | 'MANUAL' | 'OTHER'>('MANUAL')
   const [periodStartDate, setPeriodStartDate] = useState('')
   const [periodEndDate, setPeriodEndDate] = useState('')
   const [periodReason, setPeriodReason] = useState('')
+  const [periodStartTime, setPeriodStartTime] = useState('08:00')
+  const [periodEndTime, setPeriodEndTime] = useState('16:00')
 
   useEffect(() => {
     fetchClosedDates()
@@ -83,6 +89,16 @@ export function ClosedDatesManager() {
       return
     }
 
+    if (!newStartTime || !newEndTime) {
+      setError('Velg start og sluttid')
+      return
+    }
+
+    if (newStartTime >= newEndTime) {
+      setError('Starttid må være før sluttid')
+      return
+    }
+
     setSaving(true)
     setError(null)
 
@@ -95,6 +111,8 @@ export function ClosedDatesManager() {
           reason: newReason,
           type: newType,
           isRecurring: false,
+          startTime: newStartTime,
+          endTime: newEndTime,
         }),
       })
 
@@ -106,6 +124,8 @@ export function ClosedDatesManager() {
 
       setSuccess('Stengt dag lagt til')
       setNewDate('')
+      setNewStartTime('08:00')
+      setNewEndTime('16:00')
       setNewReason('')
       setNewType('MANUAL')
       setShowAddForm(false)
@@ -124,6 +144,11 @@ export function ClosedDatesManager() {
   const addPeriod = async () => {
     if (!periodStartDate || !periodEndDate || !periodReason) {
       setError('Start, slutt og grunn må fylles ut')
+      return
+    }
+
+    if (periodStartTime >= periodEndTime) {
+      setError('Starttid må være før sluttid')
       return
     }
 
@@ -153,6 +178,8 @@ export function ClosedDatesManager() {
             reason: periodReason,
             type: 'VACATION',
             isRecurring: false,
+            startTime: periodStartTime,
+            endTime: periodEndTime,
           }),
         })
 
@@ -167,6 +194,8 @@ export function ClosedDatesManager() {
       setPeriodStartDate('')
       setPeriodEndDate('')
       setPeriodReason('')
+      setPeriodStartTime('08:00')
+      setPeriodEndTime('16:00')
       setShowPeriodForm(false)
       await fetchClosedDates()
       
@@ -405,6 +434,26 @@ export function ClosedDatesManager() {
                   />
                 </div>
               </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="period-start-time">Starttid</Label>
+                  <Input
+                    id="period-start-time"
+                    type="time"
+                    value={periodStartTime}
+                    onChange={(e) => setPeriodStartTime(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="period-end-time">Sluttid</Label>
+                  <Input
+                    id="period-end-time"
+                    type="time"
+                    value={periodEndTime}
+                    onChange={(e) => setPeriodEndTime(e.target.value)}
+                  />
+                </div>
+              </div>
               <div className="flex gap-2 mt-4">
                 <Button
                   onClick={addPeriod}
@@ -427,6 +476,8 @@ export function ClosedDatesManager() {
                     setPeriodStartDate('')
                     setPeriodEndDate('')
                     setPeriodReason('')
+                    setPeriodStartTime('08:00')
+                    setPeriodEndTime('16:00')
                   }}
                   size="sm"
                 >
@@ -474,6 +525,22 @@ export function ClosedDatesManager() {
                       <SelectItem value="OTHER">Annet</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label>Stengt mellom</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      type="time"
+                      value={newStartTime}
+                      onChange={(e) => setNewStartTime(e.target.value)}
+                    />
+                    <Input
+                      type="time"
+                      value={newEndTime}
+                      onChange={(e) => setNewEndTime(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Velg start og slutt for stengt periode</p>
                 </div>
               </div>
               <div className="flex gap-2 mt-4">
@@ -540,6 +607,11 @@ export function ClosedDatesManager() {
                           timeZone: 'Europe/Oslo'
                         })}
                       </div>
+                      {(closedDate.startTime || closedDate.endTime) && (
+                        <div className="text-sm text-gray-500 mt-1">
+                          {closedDate.startTime || '00:00'} - {closedDate.endTime || '23:59'}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -569,11 +641,16 @@ export function ClosedDatesManager() {
                   key={closedDate.id}
                   className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200 opacity-60"
                 >
-                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3">
                     <div className="text-sm text-gray-600">
                       {closedDate.date.toLocaleDateString('nb-NO')}
                     </div>
                     <div className="text-sm text-gray-900">{closedDate.reason}</div>
+                    {(closedDate.startTime || closedDate.endTime) && (
+                      <div className="text-xs text-gray-500">
+                        {closedDate.startTime || '00:00'} - {closedDate.endTime || '23:59'}
+                      </div>
+                    )}
                   </div>
                   <Button
                     variant="ghost"

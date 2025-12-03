@@ -31,9 +31,8 @@ import {
 } from 'lucide-react'
 import { AddVehicleTypeDialog } from '@/components/admin/add-vehicle-type-dialog'
 import { AddServiceDialog } from '@/components/admin/add-service-dialog'
-import { EditServiceDialog } from '@/components/admin/edit-service-dialog'
+import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 
 interface ServicePrice {
   id: string
@@ -71,13 +70,13 @@ export default function AdminServicesPage() {
   const [services, setServices] = useState<Service[]>([])
   const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([])
   const [loading, setLoading] = useState(true)
-  const [editingService, setEditingService] = useState<Service | null>(null)
 
   useEffect(() => {
     fetchData()
   }, [])
 
   const fetchData = async () => {
+    setLoading(true)
     try {
       const [servicesRes, vehicleTypesRes] = await Promise.all([
         fetch('/api/admin/services-with-stats'),
@@ -99,6 +98,10 @@ export default function AdminServicesPage() {
       setLoading(false)
     }
   }
+  
+  const handleServiceUpdated = async () => {
+    await fetchData()
+  }
 
   const handleToggleActive = async (service: Service) => {
     try {
@@ -112,7 +115,7 @@ export default function AdminServicesPage() {
       })
 
       if (response.ok) {
-        window.location.reload()
+        handleServiceUpdated()
       }
     } catch (error) {
       console.error('Error toggling service:', error)
@@ -134,7 +137,7 @@ export default function AdminServicesPage() {
       })
 
       if (response.ok) {
-        window.location.reload()
+        handleServiceUpdated()
       } else {
         const data = await response.json()
         alert(data.message || 'Kunne ikke slette tjeneste')
@@ -170,7 +173,7 @@ export default function AdminServicesPage() {
         </div>
         <div className="flex space-x-2">
           <AddVehicleTypeDialog />
-          <AddServiceDialog vehicleTypes={vehicleTypes} />
+          <AddServiceDialog vehicleTypes={vehicleTypes} onSuccess={handleServiceUpdated} />
         </div>
       </div>
 
@@ -323,9 +326,11 @@ export default function AdminServicesPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setEditingService(service)}>
+                              <DropdownMenuItem asChild>
+                                <Link href={`/admin/tjenester/${service.id}`}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Rediger tjeneste
+                                </Link>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleToggleActive(service)}>
@@ -401,23 +406,6 @@ export default function AdminServicesPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Edit Dialog */}
-      {editingService && (
-        <EditServiceDialog
-          service={editingService}
-          vehicleTypes={vehicleTypes}
-          open={!!editingService}
-          onOpenChange={(open) => {
-            if (!open) {
-              setEditingService(null)
-            }
-          }}
-          onSuccess={() => {
-            window.location.reload()
-          }}
-        />
-      )}
     </div>
   )
 }

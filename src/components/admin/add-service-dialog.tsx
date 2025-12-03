@@ -33,9 +33,10 @@ interface VehicleType {
 
 interface AddServiceDialogProps {
   vehicleTypes: VehicleType[]
+  onSuccess?: () => void
 }
 
-export function AddServiceDialog({ vehicleTypes }: AddServiceDialogProps) {
+export function AddServiceDialog({ vehicleTypes, onSuccess }: AddServiceDialogProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -86,10 +87,10 @@ export function AddServiceDialog({ vehicleTypes }: AddServiceDialogProps) {
       setPrices({})
       setOpen(false)
       
-      // Trigger en re-fetch av data ved å reloade siden etter et kort delay
-      setTimeout(() => {
-        window.location.reload()
-      }, 100)
+      // Kall success callback
+      if (onSuccess) {
+        onSuccess()
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'En feil oppstod')
     } finally {

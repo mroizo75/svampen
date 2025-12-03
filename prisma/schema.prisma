@@ -373,6 +373,8 @@ model ClosedDate {
   reason      String          // Grunn (f.eks. "1. nyttårsdag", "Sommerferie")
   type        ClosedDateType  @default(MANUAL)
   isRecurring Boolean         @default(false) // For årlige helligdager
+  startTime   String?         @db.VarChar(5) // HH:mm
+  endTime     String?         @db.VarChar(5) // HH:mm
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   

@@ -60,9 +60,9 @@ interface EditServiceDialogProps {
 export function EditServiceDialog({ 
   service, 
   vehicleTypes, 
-  open, 
+  open,
   onOpenChange,
-  onSuccess
+  onSuccess,
 }: EditServiceDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -80,26 +80,27 @@ export function EditServiceDialog({
 
   // Initialiser priser når dialog åpnes
   useEffect(() => {
-    if (open) {
-      const priceMap: Record<string, string> = {}
-      service.servicePrices.forEach(sp => {
-        priceMap[sp.vehicleType.id] = sp.price.toString()
-      })
-      setPrices(priceMap)
-      
-      // Reset form data
-      setFormData({
-        name: service.name,
-        description: service.description,
-        duration: service.duration.toString(),
-        category: service.category,
-        isActive: service.isActive,
-        isAdminOnly: service.isAdminOnly,
-      })
-      setError(null)
+    if (!open) {
+      return
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+
+    const priceMap: Record<string, string> = {}
+    service.servicePrices.forEach(sp => {
+      priceMap[sp.vehicleType.id] = sp.price.toString()
+    })
+    setPrices(priceMap)
+    
+    setFormData({
+      name: service.name,
+      description: service.description,
+      duration: service.duration.toString(),
+      category: service.category,
+      isActive: service.isActive,
+      isAdminOnly: service.isAdminOnly,
+    })
+    setError(null)
+    setIsLoading(false)
+  }, [open, service])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -131,11 +132,8 @@ export function EditServiceDialog({
         throw new Error(data.message || 'Kunne ikke oppdatere tjeneste')
       }
 
-      // Lukk dialog og kall success callback
       onOpenChange(false)
-      if (onSuccess) {
-        onSuccess()
-      }
+      onSuccess?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'En feil oppstod')
     } finally {

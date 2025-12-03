@@ -160,7 +160,7 @@ export async function PUT(
       }
     })
 
-    console.log(`✅ Bedrift oppdatert: ${updatedCompany.name}`)
+    // Company updated successfully
 
     // Serialize Decimal
     const serializedCompany = {
@@ -233,7 +233,7 @@ export async function DELETE(
       where: { id }
     })
 
-    console.log(`✅ Bedrift slettet: ${company.name}`)
+    // Company deleted successfully
 
     return NextResponse.json({
       message: 'Bedrift slettet'

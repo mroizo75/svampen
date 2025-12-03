@@ -15,7 +15,25 @@ import {
 import Link from 'next/link'
 import { EditCustomerForm } from '@/components/admin/edit-customer-form'
 
-async function getCustomer(id: string) {
+function serializeCustomer(customer: NonNullable<Awaited<ReturnType<typeof getRawCustomer>>>) {
+  return {
+    ...customer,
+    bookings: customer.bookings.map(booking => ({
+      ...booking,
+      totalPrice: Number(booking.totalPrice),
+      bookingVehicles: booking.bookingVehicles.map(vehicle => ({
+        ...vehicle,
+        bookingServices: vehicle.bookingServices.map(service => ({
+          ...service,
+          unitPrice: Number(service.unitPrice),
+          totalPrice: Number(service.totalPrice),
+        })),
+      })),
+    })),
+  }
+}
+
+async function getRawCustomer(id: string) {
   return await prisma.user.findUnique({
     where: { id },
     include: {
@@ -38,6 +56,11 @@ async function getCustomer(id: string) {
       },
     },
   })
+}
+
+async function getCustomer(id: string) {
+  const customer = await getRawCustomer(id)
+  return customer ? serializeCustomer(customer) : null
 }
 
 function getRoleBadge(role: string) {

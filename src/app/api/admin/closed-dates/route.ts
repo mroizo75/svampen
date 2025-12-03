@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerAuthSession } from '@/lib/auth-utils'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerAuthSession()
+    const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerAuthSession()
+    const session = await getServerSession(authOptions)
 
     if (!session?.user?.id || session.user.role !== 'ADMIN') {
       return NextResponse.json(
@@ -65,12 +66,16 @@ export async function POST(request: NextRequest) {
       update: {
         reason: body.reason,
         isRecurring: body.isRecurring || false,
+        startTime: body.startTime ?? null,
+        endTime: body.endTime ?? null,
       },
       create: {
         date: dateObj,
         reason: body.reason,
         type: body.type || 'MANUAL',
         isRecurring: body.isRecurring || false,
+        startTime: body.startTime ?? null,
+        endTime: body.endTime ?? null,
       },
     })
 

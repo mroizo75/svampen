@@ -8,6 +8,7 @@ import { ArrowLeft, CheckCircle, Building2 } from 'lucide-react'
 import Link from 'next/link'
 import CompleteBookingButton from '@/components/admin/complete-booking-button'
 import InvoiceActions from '@/components/admin/invoice-actions'
+import { EditBookingDialog } from '@/components/admin/edit-booking-dialog'
 
 async function getBooking(id: string) {
   return await prisma.booking.findUnique({
@@ -255,6 +256,18 @@ export default async function BookingDetailsPage({
                 <p className="text-sm text-gray-600">Betaling</p>
                 <Badge>{booking.paymentStatus}</Badge>
               </div>
+              
+              {booking.status !== 'COMPLETED' && booking.status !== 'CANCELLED' && (
+                <EditBookingDialog 
+                  bookingId={booking.id}
+                  currentDate={booking.scheduledDate}
+                  currentTime={booking.scheduledTime}
+                  currentStatus={booking.status}
+                  currentNotes={booking.customerNotes || undefined}
+                  duration={booking.totalDuration}
+                />
+              )}
+              
               {booking.status !== 'COMPLETED' && (
                 <CompleteBookingButton bookingId={booking.id} currentStatus={booking.status} />
               )}

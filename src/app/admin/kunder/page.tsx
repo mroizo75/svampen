@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { 
+import {
   Table,
   TableBody,
   TableCell,
@@ -10,14 +10,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { 
+import {
   MoreHorizontal,
   Users,
   Mail,
@@ -27,15 +27,23 @@ import {
   UserPlus,
   Eye,
   Edit,
-  Shield
+  Shield,
 } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
 import { AddCustomerDialog } from '@/components/admin/add-customer-dialog'
 import Link from 'next/link'
 
-async function getCustomers() {
+const ITEMS_PER_PAGE = 20
+
+async function getCustomers(page: number) {
   try {
+    const totalCount = await prisma.user.count()
+    const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE))
+    const currentPage = Math.min(Math.max(1, page), totalPages)
+
     const customers = await prisma.user.findMany({
+      skip: (currentPage - 1) * ITEMS_PER_PAGE,
+      take: ITEMS_PER_PAGE,
       include: {
         bookings: {
           select: {
@@ -73,10 +81,20 @@ async function getCustomers() {
       }
     })
 
-    return customersWithStats
+    return {
+      customers: customersWithStats,
+      totalCount,
+      currentPage,
+      totalPages,
+    }
   } catch (error) {
     console.error('Error fetching customers:', error)
-    return []
+    return {
+      customers: [],
+      totalCount: 0,
+      currentPage: 1,
+      totalPages: 1,
+    }
   }
 }
 
@@ -136,9 +154,18 @@ function getRoleBadge(role: string) {
   }
 }
 
-export default async function AdminCustomersPage() {
-  const customers = await getCustomers()
+export default async function AdminCustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
+  const { page } = await searchParams
+  const requestedPage = Number(page) || 1
+  const { customers, totalCount, totalPages, currentPage } = await getCustomers(requestedPage)
   const stats = await getCustomerStats()
+  const hasCustomers = customers.length > 0
+  const showingStart = hasCustomers ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0
+  const showingEnd = hasCustomers ? showingStart + customers.length - 1 : 0
 
   return (
     <div className="space-y-6">
@@ -227,113 +254,150 @@ export default async function AdminCustomersPage() {
               <p className="text-gray-500">Ingen kunder funnet</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Kunde</TableHead>
-                    <TableHead>Kontakt</TableHead>
-                    <TableHead>Rolle</TableHead>
-                    <TableHead>Bestillinger</TableHead>
-                    <TableHead>Totalt brukt</TableHead>
-                    <TableHead>Siste bestilling</TableHead>
-                    <TableHead className="text-right">Handlinger</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {customers.map((customer) => (
-                    <TableRow key={customer.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">
-                            {customer.firstName} {customer.lastName}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            Registrert {new Date(customer.createdAt).toLocaleDateString('nb-NO')}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center text-sm">
-                            <Mail className="mr-2 h-3 w-3 text-gray-400" />
-                            {customer.email}
-                          </div>
-                          {customer.phone && (
-                            <div className="flex items-center text-sm text-gray-600">
-                              <Phone className="mr-2 h-3 w-3 text-gray-400" />
-                              {customer.phone}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getRoleBadge(customer.role)}
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{customer.stats.totalBookings}</div>
-                          <div className="text-sm text-gray-500">
-                            {customer.stats.completedBookings} fullført
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        kr {customer.stats.totalSpent.toLocaleString('nb-NO')}
-                      </TableCell>
-                      <TableCell>
-                        {customer.stats.lastBooking ? (
-                          <div className="text-sm">
-                            {new Date(customer.stats.lastBooking.createdAt).toLocaleDateString('nb-NO')}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 text-sm">Aldri</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/admin/kunder/${customer.id}`}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Se detaljer
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/admin/kunder/${customer.id}?edit=true`}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Rediger kunde
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/admin/bestillinger?kunde=${customer.id}`}>
-                                <Calendar className="mr-2 h-4 w-4" />
-                                Se bestillinger
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {customer.role === 'USER' && (
-                              <DropdownMenuItem>
-                                <Shield className="mr-2 h-4 w-4" />
-                                Gjør til admin
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem className="text-red-600">
-                              Deaktiver konto
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Kunde</TableHead>
+                      <TableHead>Kontakt</TableHead>
+                      <TableHead>Rolle</TableHead>
+                      <TableHead>Bestillinger</TableHead>
+                      <TableHead>Totalt brukt</TableHead>
+                      <TableHead>Siste bestilling</TableHead>
+                      <TableHead className="text-right">Handlinger</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {customers.map((customer) => (
+                      <TableRow key={customer.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">
+                              {customer.firstName} {customer.lastName}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              Registrert {new Date(customer.createdAt).toLocaleDateString('nb-NO')}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="flex items-center text-sm">
+                              <Mail className="mr-2 h-3 w-3 text-gray-400" />
+                              {customer.email}
+                            </div>
+                            {customer.phone && (
+                              <div className="flex items-center text-sm text-gray-600">
+                                <Phone className="mr-2 h-3 w-3 text-gray-400" />
+                                {customer.phone}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {getRoleBadge(customer.role)}
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{customer.stats.totalBookings}</div>
+                            <div className="text-sm text-gray-500">
+                              {customer.stats.completedBookings} fullført
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          kr {customer.stats.totalSpent.toLocaleString('nb-NO')}
+                        </TableCell>
+                        <TableCell>
+                          {customer.stats.lastBooking ? (
+                            <div className="text-sm">
+                              {new Date(customer.stats.lastBooking.createdAt).toLocaleDateString('nb-NO')}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-sm">Aldri</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link href={`/admin/kunder/${customer.id}`}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Se detaljer
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href={`/admin/kunder/${customer.id}?edit=true`}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Rediger kunde
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href={`/admin/bestillinger?kunde=${customer.id}`}>
+                                  <Calendar className="mr-2 h-4 w-4" />
+                                  Se bestillinger
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              {customer.role === 'USER' && (
+                                <DropdownMenuItem>
+                                  <Shield className="mr-2 h-4 w-4" />
+                                  Gjør til admin
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem className="text-red-600">
+                                Deaktiver konto
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="mt-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <p className="text-sm text-muted-foreground">
+                  Viser {showingStart}-{showingEnd} av {totalCount} kunde{totalCount !== 1 ? 'r' : ''}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    asChild={currentPage !== 1}
+                  >
+                    {currentPage === 1 ? (
+                      <span>Forrige</span>
+                    ) : (
+                      <Link href={`/admin/kunder?page=${currentPage - 1}`}>Forrige</Link>
+                    )}
+                  </Button>
+                  <span className="text-sm text-gray-600">
+                    Side {currentPage} av {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === totalPages}
+                    asChild={currentPage !== totalPages}
+                  >
+                    {currentPage === totalPages ? (
+                      <span>Neste</span>
+                    ) : (
+                      <Link href={`/admin/kunder?page=${currentPage + 1}`}>Neste</Link>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
