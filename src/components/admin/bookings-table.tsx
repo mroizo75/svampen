@@ -73,17 +73,17 @@ interface BookingsTableProps {
 function getStatusBadge(status: string) {
   switch (status) {
     case 'CONFIRMED':
-      return <Badge variant="default" className="bg-blue-100 text-blue-800">Bekreftet</Badge>
+      return <Badge variant="default" className="bg-blue-100 text-blue-800 text-[10px] sm:text-xs px-1.5 py-0">Bekreftet</Badge>
     case 'IN_PROGRESS':
-      return <Badge variant="default" className="bg-purple-100 text-purple-800">Pågår</Badge>
+      return <Badge variant="default" className="bg-purple-100 text-purple-800 text-[10px] sm:text-xs px-1.5 py-0">Pågår</Badge>
     case 'COMPLETED':
-      return <Badge variant="default" className="bg-green-100 text-green-800">Fullført</Badge>
+      return <Badge variant="default" className="bg-green-100 text-green-800 text-[10px] sm:text-xs px-1.5 py-0">Fullført</Badge>
     case 'CANCELLED':
-      return <Badge variant="destructive">Avbestilt</Badge>
+      return <Badge variant="destructive" className="text-[10px] sm:text-xs px-1.5 py-0">Avbestilt</Badge>
     case 'NO_SHOW':
-      return <Badge variant="destructive">Møtte ikke</Badge>
+      return <Badge variant="destructive" className="text-[10px] sm:text-xs px-1.5 py-0">Møtte ikke</Badge>
     default:
-      return <Badge variant="secondary">{status}</Badge>
+      return <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 py-0">{status}</Badge>
   }
 }
 
@@ -203,17 +203,31 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
+    <div className="overflow-x-auto -mx-4 sm:mx-0">
+      <Table className="text-xs sm:text-sm">
         <TableHeader>
           <TableRow>
-            <TableHead>Kunde</TableHead>
-            <TableHead>Tjeneste</TableHead>
-            <TableHead>Kjøretøy</TableHead>
-            <TableHead>Dato & Tid</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Pris</TableHead>
-            <TableHead className="text-right">Handlinger</TableHead>
+            <TableHead className="whitespace-nowrap text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-gray-500 py-2">
+              Kunde
+            </TableHead>
+            <TableHead className="whitespace-nowrap text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-gray-500 py-2">
+              Tjenester
+            </TableHead>
+            <TableHead className="whitespace-nowrap text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-gray-500 py-2">
+              Kjøretøy
+            </TableHead>
+            <TableHead className="whitespace-nowrap text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-gray-500 py-2">
+              Dato & tid
+            </TableHead>
+            <TableHead className="whitespace-nowrap text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-gray-500 py-2">
+              Status
+            </TableHead>
+            <TableHead className="whitespace-nowrap text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-gray-500 py-2">
+              Pris
+            </TableHead>
+            <TableHead className="text-right whitespace-nowrap text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-gray-500 py-2">
+              
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -230,63 +244,63 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
                 className={`cursor-pointer hover:bg-gray-50 transition-colors ${isUpdating ? 'opacity-50 pointer-events-none' : ''}`}
                 onClick={(e) => handleRowClick(booking.id, e)}
               >
-                <TableCell>
+                <TableCell className="py-2">
                   <div>
                     {booking.company && (
-                      <div className="text-xs text-blue-600 font-medium flex items-center mb-1">
-                        <Building2 className="h-3 w-3 mr-1" />
+                      <div className="text-[10px] text-blue-600 font-medium flex items-center mb-0.5">
+                        <Building2 className="h-2.5 w-2.5 mr-0.5" />
                         {booking.company.name}
                       </div>
                     )}
-                    <div className="font-medium">
+                    <div className="font-medium text-xs sm:text-sm">
                       {booking.user.firstName} {booking.user.lastName}
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-[10px] sm:text-xs text-gray-500 truncate max-w-[150px]">
                       {booking.user.email}
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <div className="font-medium">
+                <TableCell className="py-2">
+                  <div className="font-medium text-xs sm:text-sm">
                     {serviceCount} {serviceCount === 1 ? 'tjeneste' : 'tjenester'}
                   </div>
-                  <div className="text-sm text-gray-500">
-                    {booking.totalDuration} min totalt
+                  <div className="text-[10px] sm:text-xs text-gray-500">
+                    {booking.totalDuration} min
                   </div>
                 </TableCell>
-                <TableCell>
-                  <div className="font-medium">
+                <TableCell className="py-2">
+                  <div className="font-medium text-xs sm:text-sm">
                     {vehicleCount} {vehicleCount === 1 ? 'kjøretøy' : 'kjøretøy'}
                   </div>
-                  <div className="text-sm text-gray-500">{vehicleNames}</div>
+                  <div className="text-[10px] sm:text-xs text-gray-500 truncate max-w-[120px]">{vehicleNames}</div>
                 </TableCell>
-                <TableCell>
-                  <div className="font-medium">
-                    {new Date(booking.scheduledDate).toLocaleDateString('nb-NO')}
+                <TableCell className="py-2">
+                  <div className="font-medium text-xs sm:text-sm">
+                    {new Date(booking.scheduledDate).toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-[10px] sm:text-xs text-gray-500">
                     {new Date(booking.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="py-2">
                   {getStatusBadge(booking.status)}
                 </TableCell>
-                <TableCell className="font-medium">
+                <TableCell className="font-medium text-xs sm:text-sm py-2">
                   kr {booking.totalPrice.toLocaleString('nb-NO')}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right py-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
-                        className="h-8 w-8 p-0"
+                        className="h-7 w-7 p-0"
                         onClick={(e) => e.stopPropagation()}
                         disabled={isUpdating}
                       >
                         {isUpdating ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600" />
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-600" />
                         ) : (
-                          <MoreHorizontal className="h-4 w-4" />
+                          <MoreHorizontal className="h-3 w-3" />
                         )}
                       </Button>
                     </DropdownMenuTrigger>

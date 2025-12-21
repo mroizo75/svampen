@@ -85,81 +85,87 @@ export default async function AdminBookingsPage({
   const completedCount = bookings.filter(b => b.status === 'COMPLETED').length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 max-w-full px-2 sm:px-4">
       {/* Page Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Bestillinger</h1>
-          <p className="text-gray-600">Administrer alle bookinger og deres status</p>
+          <h1 className="text-2xl font-bold text-gray-900">Bestillinger</h1>
+          <p className="text-gray-600 text-sm">
+            Administrer alle bookinger
+          </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/bestillinger/ny">
-            <Calendar className="mr-2 h-4 w-4" />
-            Ny bestilling
-          </Link>
-        </Button>
+        <div>
+          <Button asChild size="sm">
+            <Link href="/admin/bestillinger/ny">
+              <Calendar className="mr-2 h-4 w-4" />
+              Ny bestilling
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">I gang</CardTitle>
-            <Clock className="h-4 w-4 text-purple-600" />
+      {/* Stats Cards - Kompakt versjon */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <Card className="shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-3">
+            <CardTitle className="text-xs font-medium">I gang</CardTitle>
+            <Clock className="h-3 w-3 text-purple-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{inProgressCount}</div>
+          <CardContent className="px-3 pb-3">
+            <div className="text-xl font-bold">{inProgressCount}</div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Bekreftede</CardTitle>
-            <CheckCircle className="h-4 w-4 text-blue-600" />
+        <Card className="shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-3">
+            <CardTitle className="text-xs font-medium">Bekreftede</CardTitle>
+            <CheckCircle className="h-3 w-3 text-blue-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{confirmedCount}</div>
+          <CardContent className="px-3 pb-3">
+            <div className="text-xl font-bold">{confirmedCount}</div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Fullførte</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
+        <Card className="shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-3">
+            <CardTitle className="text-xs font-medium">Fullførte</CardTitle>
+            <CheckCircle className="h-3 w-3 text-green-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{completedCount}</div>
+          <CardContent className="px-3 pb-3">
+            <div className="text-xl font-bold">{completedCount}</div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Totalt</CardTitle>
+        <Card className="shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-3">
+            <CardTitle className="text-xs font-medium">Totalt</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{bookings.length}</div>
+          <CardContent className="px-3 pb-3">
+            <div className="text-xl font-bold">{bookings.length}</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Bookings Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
+      <Card className="shadow-sm">
+        <CardHeader className="py-3 px-4">
+          <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Alle bestillinger</CardTitle>
-              <CardDescription>Oversikt over alle bookinger i systemet (klikk på en rad for å se detaljer)</CardDescription>
+              <CardTitle className="text-lg">Alle bestillinger</CardTitle>
+              <CardDescription className="text-xs">
+                Klikk på en rad for å se detaljer
+              </CardDescription>
             </div>
             <Button variant="outline" size="sm">
-              <Filter className="mr-2 h-4 w-4" />
+              <Filter className="mr-2 h-3 w-3" />
               Filter
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {bookings.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-500">Ingen bestillinger funnet</p>
+              <p className="text-gray-500 text-sm">Ingen bestillinger funnet</p>
             </div>
           ) : (
             <BookingsTable bookings={bookings} />
@@ -169,13 +175,13 @@ export default async function AdminBookingsPage({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                Viser {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} av {totalCount} bestillinger
+        <Card className="shadow-sm">
+          <CardContent className="py-3 px-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-xs text-gray-600">
+                Viser {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} av {totalCount}
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-1">
                 <Button
                   variant="outline"
                   size="sm"
@@ -191,7 +197,7 @@ export default async function AdminBookingsPage({
                   )}
                 </Button>
                 
-                <div className="flex items-center space-x-1">
+                <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNum
                     if (totalPages <= 5) {
@@ -210,6 +216,7 @@ export default async function AdminBookingsPage({
                         variant={currentPage === pageNum ? "default" : "outline"}
                         size="sm"
                         asChild={currentPage !== pageNum}
+                        className="min-w-[2rem]"
                       >
                         {currentPage === pageNum ? (
                           <span>{pageNum}</span>
