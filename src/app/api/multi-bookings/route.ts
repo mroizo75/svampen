@@ -7,6 +7,7 @@ import { sendBookingConfirmationEmail, sendAdminNotificationEmail } from '@/lib/
 import { sendBookingConfirmationSMS } from '@/lib/sms'
 import { notifyBookingUpdate } from '@/lib/sse-notifications'
 import { isNorwegianHoliday, isWeekend } from '@/lib/norwegian-holidays'
+import { rateLimiter, getClientIp } from '@/lib/rate-limiter'
 
 interface BookingVehicleData {
   vehicleTypeId: string
@@ -48,10 +49,41 @@ interface MultiBookingData {
   sendSms?: boolean
 }
 
+function validateNorwegianPostalCode(postalCode: string): boolean {
+  // Norske postnummer er 4 siffer
+  const cleanedCode = postalCode.replace(/\s/g, '')
+  return /^\d{4}$/.test(cleanedCode) && parseInt(cleanedCode) >= 0 && parseInt(cleanedCode) <= 9999
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     const bookingData: MultiBookingData = await request.json()
+
+    // Rate limiting - BARE for ikke-innloggede brukere og ikke-admin bookinger
+    // Dette beskytter mot automatiske script-angrep
+    if (!session || session.user.role === 'USER') {
+      const ip = getClientIp(request)
+      const rateLimitKey = `booking:${ip}`
+      
+      // Streng rate limiting for bookinger:
+      // Maks 3 bookinger per IP per 10 minutter
+      // Blokkert i 30 minutter hvis overskredet
+      const isAllowed = rateLimiter.checkCustomLimit(
+        rateLimitKey,
+        3,
+        10 * 60 * 1000,
+        30 * 60 * 1000
+      )
+      
+      if (!isAllowed) {
+        console.warn(`🚨 Booking rate limit exceeded for IP: ${ip}`)
+        return NextResponse.json(
+          { message: 'For mange bestillingsforsøk. Vennligst vent 30 minutter før du prøver igjen.' },
+          { status: 429 }
+        )
+      }
+    }
 
     let userId = session?.user?.id
     let user: any = session?.user
@@ -294,6 +326,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Valider postnummer hvis oppgitt (og ikke admin booking med override)
+    if (bookingData.customerInfo.postalCode && (!bookingData.isAdminBooking || !bookingData.adminOverride)) {
+      if (!validateNorwegianPostalCode(bookingData.customerInfo.postalCode)) {
+        return NextResponse.json(
+          { message: 'Ugyldig postnummer. Norske postnummer består av 4 siffer (0000-9999).' },
+          { status: 400 }
+        )
+      }
+    }
+
     // Valider at alle kjøretøy har tjenester
     for (const vehicle of bookingData.vehicles) {
       if (!vehicle.services || vehicle.services.length === 0) {
@@ -410,8 +452,52 @@ export async function POST(request: NextRequest) {
           id: true,
           scheduledTime: true,
           estimatedEnd: true,
+          userId: true,
+          user: {
+            select: {
+              email: true,
+              phone: true,
+            }
+          }
         },
       })
+      
+      // KRITISK: Sjekk for duplikat booking (samme bruker, samme tid)
+      // Dette forhindrer at én person booker flere ganger på samme tidspunkt
+      if (userId) {
+        const duplicateBooking = existingBookings.find(booking => {
+          return booking.userId === userId && 
+                 booking.scheduledTime.getTime() === bookingTime.getTime()
+        })
+        
+        if (duplicateBooking) {
+          return NextResponse.json(
+            { message: 'Du har allerede en bestilling på dette tidspunktet. Vennligst velg en annen tid eller avbestill den eksisterende bestillingen først.' },
+            { status: 409 }
+          )
+        }
+      }
+      
+      // EKSTRA BESKYTTELSE: Sjekk for samme e-post/telefon på samme tid
+      // Dette fanger opp tilfeller hvor noen prøver å lage flere brukere
+      if (bookingData.customerInfo.email || bookingData.customerInfo.phone) {
+        const suspiciousBooking = existingBookings.find(booking => {
+          const sameTime = booking.scheduledTime.getTime() === bookingTime.getTime()
+          const sameEmail = booking.user.email === bookingData.customerInfo.email
+          const samePhone = booking.user.phone && 
+                           bookingData.customerInfo.phone && 
+                           booking.user.phone.replace(/[\s\-()]/g, '') === bookingData.customerInfo.phone.replace(/[\s\-()]/g, '')
+          
+          return sameTime && (sameEmail || samePhone)
+        })
+        
+        if (suspiciousBooking) {
+          return NextResponse.json(
+            { message: 'Det finnes allerede en bestilling registrert med dine kontaktopplysninger på dette tidspunktet.' },
+            { status: 409 }
+          )
+        }
+      }
       
       
       // Sjekk for overlapp
@@ -505,8 +591,11 @@ export async function POST(request: NextRequest) {
         scheduledTime: bookingData.scheduledTime,
         totalDuration: bookingData.totalDuration,
         totalPrice: bookingData.totalPrice,
+        customerNotes: bookingData.customerNotes || undefined,
         vehicles: booking.bookingVehicles.map(vehicle => ({
           vehicleType: vehicle.vehicleType.name,
+          vehicleInfo: vehicle.vehicleInfo || undefined,
+          vehicleNotes: vehicle.vehicleNotes || undefined,
           services: vehicle.bookingServices.map(bs => ({
             name: bs.service.name,
             price: Number(bs.totalPrice),

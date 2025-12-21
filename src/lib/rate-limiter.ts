@@ -10,6 +10,7 @@ interface RateLimitEntry {
 class RateLimiter {
   private ipAttempts = new Map<string, RateLimitEntry>()
   private emailAttempts = new Map<string, RateLimitEntry>()
+  private customAttempts = new Map<string, RateLimitEntry>()
   
   // Konfigurering for email (strengt)
   private readonly MAX_ATTEMPTS_EMAIL = 5 // Maks 5 forsøk per email
@@ -40,6 +41,13 @@ class RateLimiter {
     for (const [key, entry] of this.emailAttempts.entries()) {
       if (entry.resetAt < now && (!entry.blockedUntil || entry.blockedUntil < now)) {
         this.emailAttempts.delete(key)
+      }
+    }
+    
+    // Cleanup custom attempts
+    for (const [key, entry] of this.customAttempts.entries()) {
+      if (entry.resetAt < now && (!entry.blockedUntil || entry.blockedUntil < now)) {
+        this.customAttempts.delete(key)
       }
     }
   }
@@ -133,11 +141,12 @@ class RateLimiter {
   getStatus() {
     return {
       ipAttempts: this.ipAttempts.size,
-      emailAttempts: this.emailAttempts.size
+      emailAttempts: this.emailAttempts.size,
+      customAttempts: this.customAttempts.size,
     }
   }
 
-  // Generisk rate limit sjekk for custom scenarios
+  // Generisk rate limit sjekk for custom scenarios (f.eks. booking)
   checkCustomLimit(
     key: string, 
     maxAttempts: number, 
@@ -145,12 +154,12 @@ class RateLimiter {
     blockDurationMs: number = windowMs * 2
   ): boolean {
     const result = this.checkLimit(
-      this.ipAttempts, // Bruk IP map for custom limits
+      this.customAttempts, // Bruk egen map for custom limits
       key,
       maxAttempts,
       windowMs,
       blockDurationMs,
-      'ip'
+      'ip' // Type brukes bare for logging
     )
     return result.allowed
   }
