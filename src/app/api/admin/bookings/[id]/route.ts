@@ -3,7 +3,150 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { sendEmail } from '@/lib/email'
-import { BookingStatus } from '@prisma/client'
+import { BookingStatus, Prisma } from '@prisma/client'
+
+class BookingUpdateError extends Error {
+  status: number
+
+  constructor(message: string, status = 400) {
+    super(message)
+    this.status = status
+  }
+}
+
+const bookingIncludes = {
+  user: true,
+  company: true,
+  bookingVehicles: {
+    include: {
+      vehicleType: true,
+      bookingServices: {
+        include: { service: true },
+      },
+    },
+  },
+}
+
+type AddedServiceInput = {
+  bookingVehicleId: string
+  serviceId: string
+  quantity?: number
+}
+
+async function applyServiceAdditions(
+  bookingId: string,
+  additions: AddedServiceInput[],
+  bookingVehicles: Array<{ id: string; vehicleTypeId: string }>
+) {
+  if (additions.length === 0) {
+    return
+  }
+
+  await prisma.$transaction(async (tx) => {
+    for (const addition of additions) {
+      const bookingVehicle = bookingVehicles.find((vehicle) => vehicle.id === addition.bookingVehicleId)
+      if (!bookingVehicle) {
+        throw new BookingUpdateError('Kjøretøyet tilhører ikke denne bestillingen', 400)
+      }
+
+      const quantity = addition.quantity && addition.quantity > 0 ? Math.floor(addition.quantity) : 1
+
+      const servicePrice = await tx.servicePrice.findUnique({
+        where: {
+          serviceId_vehicleTypeId: {
+            serviceId: addition.serviceId,
+            vehicleTypeId: bookingVehicle.vehicleTypeId,
+          },
+        },
+        include: {
+          service: true,
+        },
+      })
+
+      if (!servicePrice || !servicePrice.service) {
+        throw new BookingUpdateError('Tjenesten er ikke priset for valgt kjøretøy', 400)
+      }
+
+      const existingService = await tx.bookingService.findFirst({
+        where: {
+          bookingVehicleId: bookingVehicle.id,
+          serviceId: addition.serviceId,
+        },
+      })
+
+      if (existingService) {
+        const newQuantity = existingService.quantity + quantity
+        const unitPriceDecimal = new Prisma.Decimal(existingService.unitPrice)
+
+        await tx.bookingService.update({
+          where: { id: existingService.id },
+          data: {
+            quantity: newQuantity,
+            totalPrice: unitPriceDecimal.mul(newQuantity),
+          },
+        })
+      } else {
+        const unitPriceDecimal = new Prisma.Decimal(servicePrice.price)
+
+        await tx.bookingService.create({
+          data: {
+            bookingVehicleId: bookingVehicle.id,
+            serviceId: addition.serviceId,
+            quantity,
+            unitPrice: unitPriceDecimal,
+            totalPrice: unitPriceDecimal.mul(quantity),
+            duration: servicePrice.service.duration,
+          },
+        })
+      }
+    }
+
+    const bookingRecord = await tx.booking.findUnique({
+      where: { id: bookingId },
+      select: {
+        scheduledTime: true,
+      },
+    })
+
+    if (!bookingRecord) {
+      throw new BookingUpdateError('Bestilling ikke funnet under oppdatering', 404)
+    }
+
+    const bookingServices = await tx.bookingService.findMany({
+      where: {
+        bookingVehicle: {
+          bookingId,
+        },
+      },
+      select: {
+        duration: true,
+        quantity: true,
+        totalPrice: true,
+      },
+    })
+
+    const totalDuration = bookingServices.reduce(
+      (sum, service) => sum + service.duration * service.quantity,
+      0
+    )
+
+    const totalPrice = bookingServices.reduce(
+      (sum, service) => sum.add(service.totalPrice),
+      new Prisma.Decimal(0)
+    )
+
+    const estimatedEnd = new Date(bookingRecord.scheduledTime.getTime() + totalDuration * 60000)
+
+    await tx.booking.update({
+      where: { id: bookingId },
+      data: {
+        totalDuration,
+        totalPrice,
+        estimatedEnd,
+      },
+    })
+  })
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -21,53 +164,71 @@ export async function PATCH(
 
     const { id } = await params
     const body = await request.json()
-    const { scheduledDate, scheduledTime, status, customerNotes, sendNotification } = body as {
+    const { scheduledDate, scheduledTime, status, customerNotes, sendNotification, addedServices } = body as {
       scheduledDate?: string
       scheduledTime?: string
       status?: BookingStatus
       customerNotes?: string
       sendNotification?: boolean
+      addedServices?: AddedServiceInput[]
     }
 
-    // Hent eksisterende booking
-    const existingBooking = await prisma.booking.findUnique({
+    let booking = await prisma.booking.findUnique({
       where: { id },
-      include: {
-        user: true,
-        company: true,
-        bookingVehicles: {
-          include: {
-            vehicleType: true,
-            bookingServices: {
-              include: { service: true },
-            },
-          },
-        },
-      },
+      include: bookingIncludes,
     })
 
-    if (!existingBooking) {
+    if (!booking) {
       return NextResponse.json(
         { message: 'Bestilling ikke funnet' },
         { status: 404 }
       )
     }
 
+    const bookingBeforeUpdates = booking
+    const additions = Array.isArray(addedServices) ? addedServices : []
+
+    if (additions.some((service) => !service.bookingVehicleId || !service.serviceId)) {
+      throw new BookingUpdateError('Ugyldig tjenestedata for tjenester', 400)
+    }
+
+    if (additions.length > 0) {
+      await applyServiceAdditions(
+        id,
+        additions,
+        booking.bookingVehicles.map((vehicle) => ({
+          id: vehicle.id,
+          vehicleTypeId: vehicle.vehicleTypeId,
+        }))
+      )
+
+      const refreshedBooking = await prisma.booking.findUnique({
+        where: { id },
+        include: bookingIncludes,
+      })
+
+      if (!refreshedBooking) {
+        throw new BookingUpdateError('Bestilling ikke funnet etter oppdatering', 404)
+      }
+
+      booking = refreshedBooking
+    }
+
     // Sjekk om dato/tid endres
-    const dateChanged = scheduledDate && scheduledDate !== existingBooking.scheduledDate.toISOString().split('T')[0]
-    const timeChanged = scheduledTime && scheduledTime !== new Date(existingBooking.scheduledTime).toTimeString().slice(0, 5)
+    const dateChanged = scheduledDate && scheduledDate !== bookingBeforeUpdates.scheduledDate.toISOString().split('T')[0]
+    const timeChanged = scheduledTime && scheduledTime !== new Date(bookingBeforeUpdates.scheduledTime).toTimeString().slice(0, 5)
 
     if (dateChanged || timeChanged) {
       // Valider ny dato/tid
-      const newDate = scheduledDate || existingBooking.scheduledDate.toISOString().split('T')[0]
-      const newTime = scheduledTime || new Date(existingBooking.scheduledTime).toTimeString().slice(0, 5)
+      const newDate = scheduledDate || bookingBeforeUpdates.scheduledDate.toISOString().split('T')[0]
+      const newTime = scheduledTime || new Date(bookingBeforeUpdates.scheduledTime).toTimeString().slice(0, 5)
       
       // Kombiner dato og tid (lokaltid, ikke UTC)
       // Parse som lokal tid ved å bruke Date constructor med separate verdier
       const [year, month, day] = newDate.split('-').map(Number)
       const [hours, minutes] = newTime.split(':').map(Number)
       const scheduledDateTime = new Date(year, month - 1, day, hours, minutes, 0)
-      const estimatedEnd = new Date(scheduledDateTime.getTime() + existingBooking.totalDuration * 60000)
+      const estimatedEnd = new Date(scheduledDateTime.getTime() + booking.totalDuration * 60000)
 
       // Sjekk for overlappende bookinger (unntatt denne bookingen)
       const overlappingBookings = await prisma.booking.findMany({
@@ -117,26 +278,17 @@ export async function PATCH(
           scheduledDate: new Date(newDate),
           scheduledTime: scheduledDateTime,
           estimatedEnd: estimatedEnd,
-          status: status || existingBooking.status,
-          customerNotes: customerNotes !== undefined ? customerNotes : existingBooking.customerNotes,
+          status: status || booking.status,
+          customerNotes: customerNotes !== undefined ? customerNotes : booking.customerNotes,
         },
         include: {
-          user: true,
-          company: true,
-          bookingVehicles: {
-            include: {
-              vehicleType: true,
-              bookingServices: {
-                include: { service: true },
-              },
-            },
-          },
+          ...bookingIncludes,
         },
       })
 
       // Send varsling hvis forespurt
       if (sendNotification) {
-        const oldDateTime = `${existingBooking.scheduledDate.toLocaleDateString('nb-NO')} kl. ${new Date(existingBooking.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}`
+        const oldDateTime = `${bookingBeforeUpdates.scheduledDate.toLocaleDateString('nb-NO')} kl. ${new Date(bookingBeforeUpdates.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}`
         const newDateTime = `${updatedBooking.scheduledDate.toLocaleDateString('nb-NO')} kl. ${new Date(updatedBooking.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}`
 
         await sendEmail({
@@ -166,25 +318,16 @@ export async function PATCH(
     const updatedBooking = await prisma.booking.update({
       where: { id },
       data: {
-        status: status || existingBooking.status,
-        customerNotes: customerNotes !== undefined ? customerNotes : existingBooking.customerNotes,
+        status: status || booking.status,
+        customerNotes: customerNotes !== undefined ? customerNotes : booking.customerNotes,
       },
       include: {
-        user: true,
-        company: true,
-        bookingVehicles: {
-          include: {
-            vehicleType: true,
-            bookingServices: {
-              include: { service: true },
-            },
-          },
-        },
+        ...bookingIncludes,
       },
     })
 
     // Send varsling om statusendring hvis forespurt
-    if (sendNotification && status && status !== existingBooking.status) {
+    if (sendNotification && status && status !== bookingBeforeUpdates.status) {
       const statusTextMap: Record<BookingStatus, string> = {
         PENDING: 'venter',
         CONFIRMED: 'bekreftet',
@@ -216,6 +359,12 @@ export async function PATCH(
 
   } catch (error) {
     console.error('Error updating booking:', error)
+    if (error instanceof BookingUpdateError) {
+      return NextResponse.json(
+        { message: error.message },
+        { status: error.status }
+      )
+    }
     return NextResponse.json(
       { message: 'Kunne ikke oppdatere bestilling' },
       { status: 500 }

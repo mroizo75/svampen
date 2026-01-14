@@ -43,6 +43,20 @@ export default async function BookingDetailsPage({
   const booking = await getBooking(id)
   if (!booking) notFound()
 
+  const bookingVehiclesForDialog = booking.bookingVehicles.map((vehicle) => ({
+    id: vehicle.id,
+    vehicleTypeId: vehicle.vehicleTypeId,
+    vehicleTypeName: vehicle.vehicleType.name,
+    vehicleInfo: vehicle.vehicleInfo,
+    services: vehicle.bookingServices.map((service) => ({
+      id: service.id,
+      serviceId: service.serviceId,
+      name: service.service.name,
+      quantity: service.quantity,
+      unitPrice: Number(service.unitPrice),
+    })),
+  }))
+
   return (
     <div className="space-y-6">
       {/* Success Message */}
@@ -265,6 +279,7 @@ export default async function BookingDetailsPage({
                   currentStatus={booking.status}
                   currentNotes={booking.customerNotes || undefined}
                   duration={booking.totalDuration}
+                  bookingVehicles={bookingVehiclesForDialog}
                 />
               )}
               

@@ -37,11 +37,13 @@ const ITEMS_PER_PAGE = 20
 
 async function getCustomers(page: number) {
   try {
-    const totalCount = await prisma.user.count()
+    const where = { role: 'USER' as const }
+    const totalCount = await prisma.user.count({ where })
     const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE))
     const currentPage = Math.min(Math.max(1, page), totalPages)
 
     const customers = await prisma.user.findMany({
+      where,
       skip: (currentPage - 1) * ITEMS_PER_PAGE,
       take: ITEMS_PER_PAGE,
       include: {

@@ -22,14 +22,25 @@ interface BookingEmailData {
   scheduledTime: string
   totalDuration: number
   totalPrice: number
+  customerNotes?: string
   vehicles: Array<{
     vehicleType: string
+    vehicleInfo?: string
+    vehicleNotes?: string
     services: Array<{
       name: string
       price: number
     }>
   }>
 }
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 
 export async function sendBookingConfirmationEmail(data: BookingEmailData) {
   try {
@@ -53,10 +64,12 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
 
     const vehiclesList = data.vehicles.map((vehicle, idx) => `
       <div style="margin-bottom: 15px; padding: 15px; background-color: #f9fafb; border-radius: 8px;">
-        <h3 style="margin: 0 0 10px 0; color: #1f2937; font-size: 16px;">Kjøretøy ${idx + 1}: ${vehicle.vehicleType}</h3>
+        <h3 style="margin: 0 0 10px 0; color: #1f2937; font-size: 16px;">Kjøretøy ${idx + 1}: ${escapeHtml(vehicle.vehicleType)}</h3>
+        ${vehicle.vehicleInfo ? `<p style="margin: 0 0 6px 0; color: #4b5563;">Bilinfo: ${escapeHtml(vehicle.vehicleInfo)}</p>` : ''}
+        ${vehicle.vehicleNotes ? `<p style="margin: 0 0 6px 0; color: #92400e;">Merknad: ${escapeHtml(vehicle.vehicleNotes)}</p>` : ''}
         <ul style="margin: 0; padding-left: 20px; color: #6b7280;">
           ${vehicle.services.map(service => `
-            <li>${service.name} - kr ${Number(service.price).toLocaleString()},-</li>
+            <li>${escapeHtml(service.name)} - kr ${Number(service.price).toLocaleString()},-</li>
           `).join('')}
         </ul>
       </div>
@@ -249,8 +262,22 @@ export async function sendAdminNotificationEmail(data: BookingEmailData) {
     const durationText = hours > 0 ? `${hours}t ${minutes}min` : `${minutes}min`
 
     const vehiclesList = data.vehicles.map((vehicle, idx) => `
-      <li>${vehicle.vehicleType}: ${vehicle.services.map(s => s.name).join(', ')}</li>
+      <div style="margin-bottom: 12px; padding: 12px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <p style="margin: 0 0 4px 0; font-weight: 600; color: #0f172a;">Kjøretøy ${idx + 1}: ${escapeHtml(vehicle.vehicleType)}</p>
+        ${vehicle.vehicleInfo ? `<p style="margin: 0 0 4px 0; color: #475569;">Info: ${escapeHtml(vehicle.vehicleInfo)}</p>` : ''}
+        ${vehicle.vehicleNotes ? `<p style="margin: 0 0 4px 0; color: #b45309;">Merknad: ${escapeHtml(vehicle.vehicleNotes)}</p>` : ''}
+        <p style="margin: 0; color: #334155;">Tjenester: ${vehicle.services.map(s => escapeHtml(s.name)).join(', ')}</p>
+      </div>
     `).join('')
+
+    const customerNotesBlock = data.customerNotes
+      ? `
+        <div style="margin-top: 20px; padding: 15px; background-color: #fef3c7; border-radius: 8px; border: 1px solid #fde68a;">
+          <h3 style="margin: 0 0 8px 0; color: #92400e;">Kundemerknad</h3>
+          <p style="margin: 0; color: #78350f; line-height: 1.6;">${escapeHtml(data.customerNotes).replace(/\n/g, '<br />')}</p>
+        </div>
+      `
+      : ''
 
     const addressInfo = data.customerAddress || data.customerPostalCode || data.customerCity
       ? `
@@ -283,9 +310,9 @@ export async function sendAdminNotificationEmail(data: BookingEmailData) {
             <p><strong>Varighet:</strong> ${durationText}</p>
             
             <h2 style="color: #2563eb; margin-top: 20px;">Kjøretøy og tjenester</h2>
-            <ul>
-              ${vehiclesList}
-            </ul>
+            ${vehiclesList}
+
+            ${customerNotesBlock}
             
             <p style="font-size: 24px; color: #166534; margin-top: 30px;">
               <strong>Total: kr ${Number(data.totalPrice).toLocaleString()},-</strong>

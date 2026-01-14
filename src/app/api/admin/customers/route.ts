@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Valider rolle
-    const validRoles = ['USER', 'ANSATT', 'WORKSHOP']
+    const validRoles = ['USER', 'ANSATT', 'WORKSHOP', 'ADMIN']
     if (role && !validRoles.includes(role)) {
       return NextResponse.json(
         { message: 'Ugyldig brukerrolle' },

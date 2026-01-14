@@ -9,6 +9,7 @@ import {
 import { prisma } from '@/lib/prisma'
 import { SettingsForm } from '@/components/admin/settings-form'
 import { ClosedDatesManager } from '@/components/admin/closed-dates-manager'
+import { StaffUsersManager } from '@/components/admin/staff-users-manager'
 
 async function getAdminSettings() {
   try {
@@ -46,6 +47,7 @@ export default async function AdminSettingsPage() {
         <div className="lg:col-span-2 space-y-6">
           <SettingsForm initialSettings={settings} />
           <ClosedDatesManager />
+          <StaffUsersManager />
         </div>
 
         {/* Sidebar */}
