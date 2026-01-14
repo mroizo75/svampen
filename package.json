@@ -10,7 +10,8 @@
     "db:push": "prisma db push",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && npm run db:seed",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "update-prices": "npx tsx scripts/update-prices-2026.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
