@@ -55,13 +55,10 @@ async function updatePrices() {
 
   for (const item of priceUpdates) {
     try {
-      // Finn tjenesten basert på navn
+      // Finn tjenesten basert på navn (eksakt match)
       const service = await prisma.service.findFirst({
         where: {
-          name: {
-            contains: item.name,
-            mode: 'insensitive',
-          }
+          name: item.name
         },
         include: {
           servicePrices: true
