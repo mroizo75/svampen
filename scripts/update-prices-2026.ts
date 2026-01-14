@@ -4,46 +4,42 @@ const prisma = new PrismaClient()
 
 // Prisliste oppdatering 2026 - ekskl. MVA
 const priceUpdates = [
-  // Bilforhandler pakker
-  { name: 'Bilforhandler,  Demo vask, medium pakke', price: 630.00 },
-  { name: 'Bilforhandler,  Ny bil eksklusiv uten motorvask', price: 1650.00 },
-  { name: 'Bilforhandler, Brukt bil, Eksklusiv pakken med motorvask og underspyling', price: 2110.00 },
-  { name: 'Bilforhandler, Mini-pakken(Utv. vask ) liten bil', price: 249.00 },
-  { name: 'Bilforhandler, Storbil minipakke. (Utv. vask)', price: 349.00 },
-  
   // Hovedpakker
-  { name: 'Eksklusiv-pakken. Liten bil', price: 1752.00 },
+  { name: 'Mini-pakke', price: 276.00 },
+  { name: 'Medium-pakke', price: 952.00 },  // Vanlig bil
+  { name: 'Eksklusiv-pakke', price: 1752.00 },  // Vanlig bil
+  { name: 'Utvendig-pakke', price: 1240.00 },  // Vanlig bil
+  { name: 'Innvendig rengjøring', price: 640.00 },  // Vanlig bil
   
   // Tilleggstjenester
-  { name: 'Henting og bringing innen 4 km', price: 120.00 },
-  { name: 'Innvendig rengjøring personbil/liten varebil', price: 640.00 },
-  { name: 'Keramisk lakkforsegling. Liten bil', price: 5160.00 },
-  { name: 'Keramisk lakkforsegling. Stor bil', price: 5912.00 },
-  { name: 'Lakkrens', price: 1360.00 },
-  { name: 'Lyktepolering ( pr lykt )', price: 392.00 },
-  { name: 'Medium-pakke Utv/innv vask av stor bil', price: 1352.00 },
-  { name: 'Medium-pakken: Utvendig / innvendig vask liten bil', price: 952.00 },
-  { name: 'Mini-pakken(Utv. vask ) liten bil', price: 276.00 },
+  { name: 'Henting og bringing (inntil 4 km)', price: 120.00 },
   { name: 'Motorvask', price: 160.00 },
-  { name: 'OZON -behandling ( luftfjernirng )', price: 552.00 },
-  { name: 'Rens av 5 seter', price: 1032.00 },
-  { name: 'Rubbing/ripejernirng (1 dør/sjerm )', price: 392.00 },
-  { name: 'Rubbing', price: 1520.00 },
-  { name: 'Sete eller tepperens ( 5 seter vanlig bil )', price: 1592.00 },
-  { name: 'Seterens ( 1 sete )', price: 352.00 },
-  { name: 'Storbil eksklusiv-pk (inkl. innv- utv vask)', price: 2360.00 },
-  { name: 'Storbil minipakke. (Utv. vask)', price: 396.00 },
-  { name: 'Tepperens ( 1 plass )', price: 352.00 },
-  { name: 'Tepperens ( 5 seters bil )', price: 960.00 },
-  { name: 'Underspyling vanlig liten bil/varebil', price: 160.00 },
+  { name: 'Underspyling', price: 160.00 },
+  { name: 'OZON-behandling (luktfjerning)', price: 552.00 },
+  { name: 'Seterens (1 enkelt sete)', price: 352.00 },
+  { name: 'Tepperens (1 seteplass)', price: 352.00 },
+  { name: 'Seterens (5-seters vanlig bil)', price: 1032.00 },
+  { name: 'Tepperens (5-seters vanlig bil)', price: 960.00 },
+  { name: 'Sete- og tepperens (5-seters vanlig bil)', price: 1592.00 },
   
-  // Båt tjenester
-  { name: 'Utvendig vask/polering båt på tralle (15-22f)', price: 3040.00 },
-  { name: 'Utvendig vask/polering campinvogn/bobil ( 6 - 8 m )', price: 4552.00 },
-  { name: 'Utvendig vask/polering campinvogn/bobil ( 8 - 10 m )', price: 5592.00 },
-  { name: 'Utvendig vask/polering campinvogn/bobil ( opp til 6m )', price: 3432.00 },
-  { name: 'Utvendig-pakke (SUV, CARAVELLE, VAREBIL, MINIBUSS, PICKUP)', price: 1480.00 },
-  { name: 'Utvendig-pakke (vanlig liten bil/personbil)', price: 1240.00 },
+  // Spesialtjenester
+  { name: 'Lakkrens (inkl. Clay)', price: 1360.00 },
+  { name: 'Rubbing (hel bil)', price: 1520.00 },
+  { name: 'Rubbing/Ripefjerning (pr. dør/skjerm)', price: 392.00 },
+  { name: 'Lyktepolering (pr. lykt)', price: 392.00 },
+  { name: 'Keramisk lakkforsegling', price: 5160.00 },  // Vanlig bil
+  
+  // Båt og Bobil
+  { name: 'Innv-/utvendig vask og polering (inntil 14 fot)', price: 2850.00 },
+  { name: 'Utvendig vask og polering (15-22 fot)', price: 3040.00 },
+  { name: 'Utv. vask Camping (opptil 6m)', price: 3432.00 },
+  
+  // Bilforhandler-pakker (generiske - DEALER kategori)
+  { name: 'Bilforhandler, Mini-pakken (Utv. vask) liten bil', price: 249.00 },
+  { name: 'Bilforhandler, Storbil minipakke (Utv. vask)', price: 396.00 },
+  { name: 'Bilforhandler, Demo vask, medium pakke', price: 630.00 },
+  { name: 'Bilforhandler, Ny bil eksklusiv pakken med motorvask', price: 1650.00 },
+  { name: 'Bilforhandler, Brukt bil, Eksklusiv pakken med motorvask og underspyling', price: 2110.00 },
 ]
 
 async function updatePrices() {

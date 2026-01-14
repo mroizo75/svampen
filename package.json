@@ -11,6 +11,7 @@
     "db:seed": "npx tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && npm run db:seed",
     "db:studio": "prisma studio",
+    "list-services": "npx tsx scripts/list-services.ts",
     "update-prices": "npx tsx scripts/update-prices-2026.ts"
   },
   "dependencies": {
