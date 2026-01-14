@@ -126,10 +126,15 @@ export async function PATCH(
 
     // Hvis priser er inkludert, oppdater dem
     if (prices && typeof prices === 'object') {
+      console.log('🔄 Oppdaterer priser for tjeneste:', id)
+      console.log('📝 Nye priser:', prices)
+      
       // Oppdater eller opprett priser
       for (const [vehicleTypeId, price] of Object.entries(prices)) {
         if (typeof price === 'number' && price >= 0) {
-          await prisma.servicePrice.upsert({
+          console.log(`💰 Setter pris ${price} for kjøretøy ${vehicleTypeId}`)
+          
+          const result = await prisma.servicePrice.upsert({
             where: {
               serviceId_vehicleTypeId: {
                 serviceId: id,
@@ -145,6 +150,8 @@ export async function PATCH(
               price,
             },
           })
+          
+          console.log(`✅ Pris oppdatert:`, result)
         }
       }
 
