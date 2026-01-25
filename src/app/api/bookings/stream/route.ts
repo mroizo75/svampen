@@ -1,7 +1,16 @@
 import { NextRequest } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { sseClients } from '@/lib/sse-notifications'
 
 export async function GET(request: NextRequest) {
+  // Krever autentisering for SSE stream
+  const session = await getServerSession(authOptions)
+  
+  if (!session || !['ADMIN', 'ANSATT'].includes(session.user.role)) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
   const clientId = crypto.randomUUID()
 
   const stream = new ReadableStream({

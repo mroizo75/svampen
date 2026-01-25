@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import { sendBookingConfirmationEmail, sendAdminNotificationEmail } from '@/lib/email'
 import { sendBookingConfirmationSMS } from '@/lib/sms'
 import { notifyBookingUpdate } from '@/lib/sse-notifications'
@@ -159,7 +160,7 @@ export async function POST(request: NextRequest) {
           
           if (bookingData.isAdminBooking) {
             // Generate random password for admin-created accounts
-            const randomPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12)
+            const randomPassword = crypto.randomBytes(16).toString('hex')
             hashedPassword = await bcrypt.hash(randomPassword, 12)
           } else {
             // For self-registration, password is required
@@ -257,7 +258,7 @@ export async function POST(request: NextRequest) {
         } else {
           // Create guest user (with random password for security)
           try {
-            const randomPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12)
+            const randomPassword = crypto.randomBytes(16).toString('hex')
             const hashedPassword = await bcrypt.hash(randomPassword, 12)
             
             const guestUser = await prisma.user.create({

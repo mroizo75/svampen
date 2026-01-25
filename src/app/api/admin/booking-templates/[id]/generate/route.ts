@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import { notifyBookingUpdate } from '@/lib/sse-notifications'
 
 // POST - Generer bookinger fra mal
@@ -58,8 +59,8 @@ export async function POST(
       userId = company.contactPerson.id
     } else {
       // Opprett en bruker for bedriften hvis den ikke finnes
-      const randomPassword = Math.random().toString(36).slice(-12)
-      const hashedPassword = await bcrypt.hash(randomPassword, 10)
+      const randomPassword = crypto.randomBytes(16).toString('hex')
+      const hashedPassword = await bcrypt.hash(randomPassword, 12)
       
       const newUser = await prisma.user.create({
         data: {

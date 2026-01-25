@@ -5,6 +5,11 @@ import { prisma } from './prisma'
 import { UserRole } from '@prisma/client'
 import { rateLimiter } from './rate-limiter'
 
+// Valider at NEXTAUTH_SECRET er satt
+if (!process.env.NEXTAUTH_SECRET) {
+  throw new Error('NEXTAUTH_SECRET er ikke satt i environment variables')
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -74,16 +79,53 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   session: {
-    strategy: 'jwt'
+    strategy: 'jwt',
+    maxAge: 7 * 24 * 60 * 60, // 7 dager
+    updateAge: 24 * 60 * 60, // Oppdater session hver 24 timer
+  },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' 
+        ? '__Secure-next-auth.session-token' 
+        : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.role = user.role
         token.firstName = user.firstName
         token.lastName = user.lastName
-        token.phone = user.phone
+        // Fjernet phone fra JWT token for å redusere sensitiv data
       }
+      
+      // Token refresh logikk
+      if (trigger === 'update' && token.sub) {
+        // Hent oppdatert brukerinfo ved token refresh
+        const updatedUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+          }
+        })
+        
+        if (updatedUser) {
+          token.role = updatedUser.role
+          token.firstName = updatedUser.firstName
+          token.lastName = updatedUser.lastName
+        }
+      }
+      
       return token
     },
     async session({ session, token }) {
@@ -92,7 +134,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as UserRole
         session.user.firstName = token.firstName as string
         session.user.lastName = token.lastName as string
-        session.user.phone = token.phone as string
+        // Phone hentes fra database ved behov i stedet for å være i token
       }
       return session
     }
@@ -127,7 +169,6 @@ declare module 'next-auth/jwt' {
   interface JWT {
     firstName?: string
     lastName?: string
-    phone?: string
     role?: UserRole
   }
 }

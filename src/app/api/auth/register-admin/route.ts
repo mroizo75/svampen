@@ -3,20 +3,23 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { UserRole } from '@prisma/client'
 import * as rateLimiter from '@/lib/rate-limiter'
+import { registerSchema } from '@/lib/validation'
 
 /**
  * Sikker admin-registrering endpoint
- * Krever ADMIN_REGISTRATION_SECRET i .env
+ * Krever ADMIN_REGISTRATION_SECRET i Authorization header
  * Rate limiting: Maks 3 forsøk per 15 min per IP
  * 
  * POST /api/auth/register-admin
+ * Headers: {
+ *   Authorization: Bearer <ADMIN_REGISTRATION_SECRET>
+ * }
  * Body: {
  *   firstName: string,
  *   lastName: string,
  *   email: string,
  *   phone?: string,
- *   password: string,
- *   adminSecret: string (fra .env)
+ *   password: string
  * }
  */
 export async function POST(req: NextRequest) {
@@ -42,17 +45,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { firstName, lastName, email, phone, password, adminSecret } = await req.json()
-
-    // Validering
-    if (!firstName || !lastName || !email || !password || !adminSecret) {
-      return NextResponse.json(
-        { message: 'Alle påkrevde felt må fylles ut (firstName, lastName, email, password, adminSecret)' },
-        { status: 400 }
-      )
-    }
-
-    // Sjekk admin secret
+    // Sjekk Authorization header
+    const authHeader = req.headers.get('authorization')
     const envAdminSecret = process.env.ADMIN_REGISTRATION_SECRET
 
     if (!envAdminSecret) {
@@ -63,30 +57,28 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (adminSecret !== envAdminSecret) {
-      console.warn(`Failed admin registration attempt for email: ${email}`)
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { message: 'Authorization header mangler eller er ugyldig' },
+        { status: 401 }
+      )
+    }
+
+    const providedSecret = authHeader.substring(7) // Fjern "Bearer "
+
+    if (providedSecret !== envAdminSecret) {
+      console.warn(`Failed admin registration attempt from IP: ${ip}`)
       return NextResponse.json(
         { message: 'Ugyldig admin secret. Tilgang nektet.' },
         { status: 403 }
       )
     }
 
-    // Validering av passord
-    if (password.length < 6) {
-      return NextResponse.json(
-        { message: 'Passordet må være minst 6 tegn' },
-        { status: 400 }
-      )
-    }
-
-    // Email validering
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { message: 'Ugyldig e-postadresse' },
-        { status: 400 }
-      )
-    }
+    const body = await req.json()
+    
+    // Valider input med Zod
+    const validatedData = registerSchema.parse(body)
+    const { firstName, lastName, email, phone, password } = validatedData
 
     // Sjekk om brukeren allerede eksisterer
     const existingUser = await prisma.user.findUnique({
@@ -134,8 +126,23 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     )
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Admin registration error:', error)
+    
+    // Håndter Zod valideringsfeil
+    if (error.name === 'ZodError') {
+      return NextResponse.json(
+        { 
+          message: 'Valideringsfeil', 
+          errors: error.errors.map((e: any) => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        },
+        { status: 400 }
+      )
+    }
+    
     return NextResponse.json(
       { message: 'En intern feil oppstod ved admin registrering' },
       { status: 500 }

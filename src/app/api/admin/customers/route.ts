@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
 
-// GET - Hent alle brukere
+// GET - Hent alle brukere med paginering
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -18,6 +19,18 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url)
     const roleParam = searchParams.get('role')
+    const page = parseInt(searchParams.get('page') || '1', 10)
+    const limit = parseInt(searchParams.get('limit') || '100', 10)
+    
+    // Valider paginering parametere
+    if (page < 1 || limit < 1 || limit > 500) {
+      return NextResponse.json(
+        { message: 'Ugyldige paginering parametere' },
+        { status: 400 }
+      )
+    }
+    
+    const skip = (page - 1) * limit
 
     // Bygg where-clause basert på role parameter
     let whereClause: any = {}
@@ -41,6 +54,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Hent totalt antall for paginering
+    const total = await prisma.user.count({ where: whereClause })
+    
     const users = await prisma.user.findMany({
       where: whereClause,
       select: {
@@ -54,10 +70,20 @@ export async function GET(req: NextRequest) {
       },
       orderBy: {
         firstName: 'asc',
-      }
+      },
+      skip,
+      take: limit,
     })
 
-    return NextResponse.json(users)
+    return NextResponse.json({
+      data: users,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      }
+    })
 
   } catch (error) {
     console.error('Error fetching users:', error)
@@ -132,7 +158,7 @@ export async function POST(req: NextRequest) {
       hashedPassword = await bcrypt.hash(password, 12)
     } else {
       // Generer et tilfeldig passord hvis ingen er angitt
-      const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8)
+      const randomPassword = crypto.randomBytes(16).toString('hex')
       hashedPassword = await bcrypt.hash(randomPassword, 12)
     }
 

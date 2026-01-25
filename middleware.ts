@@ -22,7 +22,7 @@ export default withAuth(
 
         // API ruter som krever autentisering
         if (pathname.startsWith('/api/admin')) {
-          return !!token
+          return token?.role === UserRole.ADMIN
         }
 
         return true

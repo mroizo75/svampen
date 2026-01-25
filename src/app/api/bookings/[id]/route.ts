@@ -11,6 +11,14 @@ export async function GET(
   try {
     const session = await getServerSession(authOptions)
 
+    // Krever autentisering for å se booking-detaljer
+    if (!session) {
+      return NextResponse.json(
+        { message: 'Du må være logget inn for å se bestillingsdetaljer' },
+        { status: 401 }
+      )
+    }
+
     const { id } = await params
     const booking = await prisma.booking.findUnique({
       where: {
@@ -46,9 +54,8 @@ export async function GET(
       )
     }
 
-    // Hvis innlogget: sjekk at brukeren har tilgang til denne bestillingen
-    // Hvis ikke innlogget: tillat tilgang (booking-ID er vanskelig å gjette)
-    if (session && booking.userId !== session.user.id && session.user.role !== 'ADMIN') {
+    // Sjekk at brukeren har tilgang til denne bestillingen
+    if (booking.userId !== session.user.id && session.user.role !== 'ADMIN') {
       return NextResponse.json(
         { message: 'Ingen tilgang' },
         { status: 403 }

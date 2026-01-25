@@ -94,12 +94,14 @@ export default async function TjenesterPage() {
 
   return (
     <MainLayout>
-      {/* Structured Data for SEO */}
+      {/* Structured Data for SEO - Next.js Script component */}
       <script
+        id="service-list-schema"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceListSchema) }}
       />
       <script
+        id="local-business-schema"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
       />
