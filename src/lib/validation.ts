@@ -39,7 +39,7 @@ export const serviceSchema = z.object({
   category: z.enum(['MAIN', 'ADDON', 'SPECIAL', 'DEALER']),
   isActive: z.boolean().optional(),
   isAdminOnly: z.boolean().optional(),
-  prices: z.record(z.number().nonnegative('Pris må være positiv')).optional(),
+  prices: z.record(z.string(), z.number().nonnegative('Pris må være positiv')).optional(),
 })
 
 // Company schema
