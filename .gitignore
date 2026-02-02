@@ -48,3 +48,8 @@ next-env.d.ts
 # markdown files (except README.md)
 *.md
 !README.md
+
+# Seed og skript som kan være sikkerhetsrisiko (åpnes kun når nødvendig)
+/prisma/seed.ts
+/scripts/
+/update-admin-only-services.sql

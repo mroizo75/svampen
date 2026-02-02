@@ -29,6 +29,7 @@ import {
 import Link from 'next/link'
 import { VehicleSelector } from './vehicle-selector'
 import { ServiceSelector } from './service-selector'
+import { priceWithVat } from '@/lib/pricing'
 import { CustomerInfoStep } from './customer-info-step'
 import { DateTimeSelector } from './datetime-selector'
 import { BookingSummary } from './booking-summary'
@@ -955,6 +956,7 @@ export function MultiBookingWizard({
                     setBookingData(prev => ({ ...prev, customerNotes }))
                   }
                   selectedCompany={customerType === 'company' ? selectedCompany : undefined}
+                  isAdminBooking={true}
                 />
               ) : (
                 // For private kunder: Dato & Tid
@@ -989,6 +991,7 @@ export function MultiBookingWizard({
                 setBookingData(prev => ({ ...prev, customerNotes }))
               }
               selectedCompany={customerType === 'company' ? selectedCompany : undefined}
+              isAdminBooking={false}
             />
           )}
 
@@ -1045,10 +1048,13 @@ export function MultiBookingWizard({
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-gray-600">Total pris:</p>
+                <p className="text-sm text-gray-600 font-medium">Totalpris</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  kr {Number(bookingData.totalPrice).toLocaleString()},-
+                  kr {(isAdminBooking ? Number(bookingData.totalPrice) : priceWithVat(bookingData.totalPrice)).toLocaleString()},-
                 </p>
+                {!isAdminBooking && (
+                  <p className="text-xs text-gray-500">Inkl. mva</p>
+                )}
               </div>
             </div>
           </CardContent>

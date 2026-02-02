@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { priceWithVat } from '@/lib/pricing'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -232,10 +233,10 @@ export default function BookingDetailsPage() {
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-medium">kr {Number(service.totalPrice).toLocaleString()},-</p>
+                            <p className="font-medium">kr {priceWithVat(Number(service.totalPrice)).toLocaleString()},-</p>
                             {service.quantity > 1 && (
                               <p className="text-xs text-gray-500">
-                                ({Number(service.unitPrice).toLocaleString()},- × {service.quantity})
+                                ({priceWithVat(Number(service.unitPrice)).toLocaleString()},- × {service.quantity})
                               </p>
                             )}
                           </div>
@@ -274,8 +275,8 @@ export default function BookingDetailsPage() {
             <CardContent>
               <div className="space-y-2">
                 <div className="flex justify-between text-2xl font-bold text-blue-600">
-                  <span>Total:</span>
-                  <span>kr {Number(booking.totalPrice).toLocaleString()},-</span>
+                  <span>Totalpris:</span>
+                  <span>kr {priceWithVat(Number(booking.totalPrice)).toLocaleString()},-</span>
                 </div>
                 <p className="text-xs text-gray-600">Inkl. mva</p>
               </div>

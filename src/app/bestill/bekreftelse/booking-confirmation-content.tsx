@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { priceWithVat } from '@/lib/pricing'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { MainLayout } from '@/components/layout/main-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -194,7 +195,7 @@ export default function BookingConfirmationContent() {
                         <ul className="space-y-1 ml-7">
                           {vehicle.bookingServices.map((bs: any, serviceIdx: number) => (
                             <li key={serviceIdx} className="text-sm text-gray-600">
-                              {bs.service.name} - {bs.totalPrice.toFixed(0)} kr
+                              {bs.service.name} - {priceWithVat(Number(bs.totalPrice)).toLocaleString()} kr
                             </li>
                           ))}
                         </ul>
@@ -206,9 +207,12 @@ export default function BookingConfirmationContent() {
                 {/* Total Price */}
                 <div className="border-t pt-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-lg font-semibold text-gray-900">Totalpris</span>
+                    <div>
+                      <span className="text-lg font-semibold text-gray-900">Totalpris</span>
+                      <p className="text-xs text-gray-500">Inkl. mva</p>
+                    </div>
                     <span className="text-2xl font-bold text-blue-600">
-                      {booking.totalPrice.toFixed(0)} kr
+                      {priceWithVat(Number(booking.totalPrice)).toLocaleString()} kr
                     </span>
                   </div>
                 </div>

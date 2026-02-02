@@ -1,6 +1,7 @@
 'use client'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { priceWithVat } from '@/lib/pricing'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Label } from '@/components/ui/label'
@@ -77,6 +78,7 @@ interface BookingSummaryProps {
   vehicleTypes: VehicleType[]
   onNotesChange: (notes: string) => void
   selectedCompany?: any // Bedriftsinfo hvis bedriftskunde
+  isAdminBooking?: boolean
 }
 
 export function BookingSummary({
@@ -85,6 +87,7 @@ export function BookingSummary({
   vehicleTypes,
   onNotesChange,
   selectedCompany,
+  isAdminBooking = false,
 }: BookingSummaryProps) {
   const getService = (serviceId: string) => {
     return services.find(s => s.id === serviceId)
@@ -114,6 +117,9 @@ export function BookingSummary({
     const endMins = endMinutes % 60
     return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`
   }
+
+  const getDisplayPrice = (priceExclVat: number) =>
+    isAdminBooking ? priceExclVat : priceWithVat(priceExclVat)
 
   const getCategoryBadge = (category: string) => {
     switch (category) {
@@ -281,11 +287,11 @@ export function BookingSummary({
                         </div>
                         <div className="text-right">
                           <div className="font-semibold">
-                            kr {Number(serviceBooking.totalPrice).toLocaleString()}
+                            kr {getDisplayPrice(serviceBooking.totalPrice).toLocaleString()}
                           </div>
                           {serviceBooking.quantity > 1 && (
                             <div className="text-sm text-gray-500">
-                              kr {Number(serviceBooking.unitPrice).toLocaleString()} × {serviceBooking.quantity}
+                              kr {getDisplayPrice(serviceBooking.unitPrice).toLocaleString()} × {serviceBooking.quantity}
                             </div>
                           )}
                         </div>
@@ -310,7 +316,7 @@ export function BookingSummary({
                   <div className="flex justify-between items-center font-medium">
                     <span>Subtotal for dette kjøretøyet:</span>
                     <div className="text-right">
-                      <div>kr {Number(vehicleTotalPrice).toLocaleString()}</div>
+                      <div>kr {getDisplayPrice(vehicleTotalPrice).toLocaleString()}</div>
                       <div className="text-sm text-gray-500">
                         {formatDuration(vehicleTotalDuration)}
                       </div>
@@ -356,12 +362,15 @@ export function BookingSummary({
               <div className="flex items-center space-x-2">
                 <DollarSign className="h-5 w-5 text-green-600" />
                 <span className="text-2xl font-bold text-green-800">
-                  kr {Number(bookingData.totalPrice).toLocaleString()},-
+                  kr {getDisplayPrice(bookingData.totalPrice).toLocaleString()},-
                 </span>
               </div>
-              <div className="text-sm text-green-600">
-                Total pris
+              <div className="text-sm text-green-600 font-medium">
+                Totalpris
               </div>
+              {!isAdminBooking && (
+                <div className="text-xs text-green-600">Inkl. mva</div>
+              )}
             </div>
           </div>
         </CardContent>

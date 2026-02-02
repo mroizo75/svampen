@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { priceWithVat } from '@/lib/pricing'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -95,6 +96,9 @@ export function ServiceSelector({
     return Number(priceInfo?.price) || 0
   }
 
+  const getDisplayPrice = (priceExclVat: number) =>
+    isAdminBooking ? priceExclVat : priceWithVat(priceExclVat)
+
   const isServiceSelected = (serviceId: string) => {
     return selectedServices.some(s => s.serviceId === serviceId)
   }
@@ -188,11 +192,14 @@ export function ServiceSelector({
                       </Button>
                     </div>
                     <div className="text-right min-w-20">
-                      <div className="font-semibold">kr {Number(selectedService.totalPrice).toLocaleString()}</div>
+                      <div className="font-semibold">kr {getDisplayPrice(selectedService.totalPrice).toLocaleString()}</div>
                       {selectedService.quantity > 1 && (
                         <div className="text-xs text-gray-500">
-                          kr {Number(selectedService.unitPrice).toLocaleString()} × {selectedService.quantity}
+                          kr {getDisplayPrice(selectedService.unitPrice).toLocaleString()} × {selectedService.quantity}
                         </div>
+                      )}
+                      {!isAdminBooking && (
+                        <div className="text-xs text-gray-500">Inkl. mva</div>
                       )}
                     </div>
                     <Button
@@ -273,8 +280,11 @@ export function ServiceSelector({
                     </div>
                     <div className="text-right ml-4">
                       <div className="text-lg font-bold text-blue-600">
-                        kr {Number(price).toLocaleString()}
+                        kr {getDisplayPrice(price).toLocaleString()}
                       </div>
+                      {!isAdminBooking && (
+                        <div className="text-xs text-gray-500">Inkl. mva</div>
+                      )}
                       <div className="text-sm text-gray-500 flex items-center">
                         <Clock className="mr-1 h-3 w-3" />
                         {service.duration} min

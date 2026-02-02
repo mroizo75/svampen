@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import { generateICalContent } from './calendar-utils'
+import { priceWithVat } from './pricing'
 
 // Sjekk om Resend API key er satt
 if (!process.env.RESEND_API_KEY) {
@@ -69,7 +70,7 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
         ${vehicle.vehicleNotes ? `<p style="margin: 0 0 6px 0; color: #92400e;">Merknad: ${escapeHtml(vehicle.vehicleNotes)}</p>` : ''}
         <ul style="margin: 0; padding-left: 20px; color: #6b7280;">
           ${vehicle.services.map(service => `
-            <li>${escapeHtml(service.name)} - kr ${Number(service.price).toLocaleString()},-</li>
+            <li>${escapeHtml(service.name)} - kr ${priceWithVat(Number(service.price)).toLocaleString()},-</li>
           `).join('')}
         </ul>
       </div>
@@ -130,7 +131,7 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
               <!-- Total Price -->
               <div style="margin: 30px 0; padding: 20px; background-color: #f0fdf4; border-radius: 8px; text-align: center;">
                 <p style="margin: 0 0 5px 0; color: #15803d; font-size: 14px; font-weight: 600;">TOTALPRIS</p>
-                <p style="margin: 0; color: #166534; font-size: 32px; font-weight: bold;">kr ${Number(data.totalPrice).toLocaleString()},-</p>
+                <p style="margin: 0; color: #166534; font-size: 32px; font-weight: bold;">kr ${priceWithVat(Number(data.totalPrice)).toLocaleString()},-</p>
                 <p style="margin: 5px 0 0 0; color: #15803d; font-size: 12px;">Inkl. mva</p>
               </div>
 
