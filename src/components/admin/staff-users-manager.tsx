@@ -72,8 +72,11 @@ export function StaffUsersManager() {
         throw new Error('Kunne ikke hente systembrukere')
       }
 
-      const data: StaffUser[] = await response.json()
-      setStaff(data)
+      const responseData = await response.json()
+      const users: StaffUser[] = Array.isArray(responseData?.data)
+        ? responseData.data
+        : []
+      setStaff(users)
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Kunne ikke hente systembrukere',
@@ -89,7 +92,7 @@ export function StaffUsersManager() {
 
   const sortedStaff = useMemo(
     () =>
-      [...staff].sort((a, b) =>
+      [...(Array.isArray(staff) ? staff : [])].sort((a, b) =>
         a.firstName.localeCompare(b.firstName, 'nb-NO', { sensitivity: 'base' }),
       ),
     [staff],

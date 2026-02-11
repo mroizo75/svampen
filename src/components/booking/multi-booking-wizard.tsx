@@ -29,7 +29,7 @@ import {
 import Link from 'next/link'
 import { VehicleSelector } from './vehicle-selector'
 import { ServiceSelector } from './service-selector'
-import { priceWithVat } from '@/lib/pricing'
+import { priceWithVat, mvaAmount } from '@/lib/pricing'
 import { CustomerInfoStep } from './customer-info-step'
 import { DateTimeSelector } from './datetime-selector'
 import { BookingSummary } from './booking-summary'
@@ -1039,7 +1039,7 @@ export function MultiBookingWizard({
       {bookingData.totalPrice > 0 && (
         <Card className="mt-6 bg-blue-50 border-blue-200">
           <CardContent className="pt-6">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-start gap-6">
               <div>
                 <p className="text-sm text-gray-600">Total tid:</p>
                 <p className="font-medium">
@@ -1048,13 +1048,13 @@ export function MultiBookingWizard({
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-gray-600 font-medium">Totalpris</p>
+                <p className="text-xs text-gray-600 mb-0.5">Pris: kr {Number(bookingData.totalPrice).toLocaleString()},-</p>
+                <p className="text-xs text-gray-600 mb-0.5">MVA (25%): kr {mvaAmount(bookingData.totalPrice).toLocaleString()},-</p>
+                <p className="text-sm text-gray-600 font-medium mt-1">Totalpris</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  kr {(isAdminBooking ? Number(bookingData.totalPrice) : priceWithVat(bookingData.totalPrice)).toLocaleString()},-
+                  kr {priceWithVat(bookingData.totalPrice).toLocaleString()},-
                 </p>
-                {!isAdminBooking && (
-                  <p className="text-xs text-gray-500">Inkl. mva</p>
-                )}
+                <p className="text-xs text-gray-500">Inkl. mva</p>
               </div>
             </div>
           </CardContent>

@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { priceWithVat } from '@/lib/pricing'
+import { priceWithVat, mvaAmount } from '@/lib/pricing'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Label } from '@/components/ui/label'
@@ -118,8 +118,7 @@ export function BookingSummary({
     return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`
   }
 
-  const getDisplayPrice = (priceExclVat: number) =>
-    isAdminBooking ? priceExclVat : priceWithVat(priceExclVat)
+  const getDisplayPrice = (priceExclVat: number) => priceWithVat(priceExclVat)
 
   const getCategoryBadge = (category: string) => {
     switch (category) {
@@ -359,18 +358,19 @@ export function BookingSummary({
               </div>
             </div>
             <div className="text-right">
-              <div className="flex items-center space-x-2">
+              <div className="text-xs text-green-700 space-y-0.5">
+                <div>Pris: kr {Number(bookingData.totalPrice).toLocaleString()},-</div>
+                <div>MVA (25%): kr {mvaAmount(bookingData.totalPrice).toLocaleString()},-</div>
+              </div>
+              <div className="flex items-center space-x-2 mt-1">
                 <DollarSign className="h-5 w-5 text-green-600" />
                 <span className="text-2xl font-bold text-green-800">
                   kr {getDisplayPrice(bookingData.totalPrice).toLocaleString()},-
                 </span>
               </div>
               <div className="text-sm text-green-600 font-medium">
-                Totalpris
+                Totalpris (inkl. mva)
               </div>
-              {!isAdminBooking && (
-                <div className="text-xs text-green-600">Inkl. mva</div>
-              )}
             </div>
           </div>
         </CardContent>
