@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { BookingStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { isNorwegianHoliday, isWeekend } from '@/lib/norwegian-holidays'
 
@@ -25,6 +26,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const date = searchParams.get('date')
     const duration = parseInt(searchParams.get('duration') || '60')
+    const excludeBookingId = searchParams.get('excludeBookingId')
 
     if (!date) {
       return NextResponse.json(
@@ -96,16 +98,18 @@ export async function GET(request: NextRequest) {
     const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
     const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
     
-    const existingBookings = await prisma.booking.findMany({
-      where: {
-        scheduledDate: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-        status: {
-          in: ['CONFIRMED', 'IN_PROGRESS'],
-        },
+    const existingBookingsWhere = {
+      scheduledDate: {
+        gte: startOfDay,
+        lte: endOfDay,
       },
+      status: {
+        in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] satisfies BookingStatus[],
+      },
+      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+    }
+    const existingBookings = await prisma.booking.findMany({
+      where: existingBookingsWhere,
       select: {
         id: true,
         scheduledTime: true,

@@ -231,10 +231,11 @@ export async function PATCH(
       const estimatedEnd = new Date(scheduledDateTime.getTime() + booking.totalDuration * 60000)
 
       // Sjekk for overlappende bookinger (unntatt denne bookingen)
+      // PENDING, CONFIRMED, IN_PROGRESS blokkerer. CANCELLED, COMPLETED, NO_SHOW teller ikke.
       const overlappingBookings = await prisma.booking.findMany({
         where: {
           id: { not: id },
-          status: { notIn: ['CANCELLED', 'COMPLETED'] },
+          status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] },
           OR: [
             {
               AND: [

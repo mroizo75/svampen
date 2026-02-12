@@ -242,7 +242,9 @@ export function EditBookingDialog({
     
     try {
       const formattedDate = format(date, 'yyyy-MM-dd')
-      const response = await fetch(`/api/availability?date=${formattedDate}&duration=${duration}`)
+      const params = new URLSearchParams({ date: formattedDate, duration: String(duration) })
+      params.set('excludeBookingId', bookingId)
+      const response = await fetch(`/api/availability?${params}`)
       
       if (!response.ok) {
         throw new Error('Kunne ikke hente tilgjengelige tider')

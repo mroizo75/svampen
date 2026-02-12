@@ -23,6 +23,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale'
 import CancelBookingButton from '@/components/dashboard/cancel-booking-button'
+import { EditBookingDialog } from '@/components/dashboard/edit-booking-dialog'
 
 interface BookingDetails {
   id: string
@@ -312,6 +313,17 @@ export default function BookingDetailsPage() {
           {/* Actions */}
           <Card>
             <CardContent className="pt-6 space-y-2">
+              {!['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status) &&
+                new Date(booking.scheduledDate) >= new Date(new Date().setHours(0, 0, 0, 0)) && (
+                  <EditBookingDialog
+                    bookingId={booking.id}
+                    currentDate={new Date(booking.scheduledDate)}
+                    currentTime={new Date(booking.scheduledTime)}
+                    currentNotes={booking.customerNotes}
+                    duration={booking.totalDuration}
+                    onSuccess={fetchBooking}
+                  />
+                )}
               <CancelBookingButton 
                 bookingId={booking.id} 
                 currentStatus={booking.status}
