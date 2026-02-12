@@ -230,48 +230,7 @@ export async function PATCH(
       const scheduledDateTime = new Date(year, month - 1, day, hours, minutes, 0)
       const estimatedEnd = new Date(scheduledDateTime.getTime() + booking.totalDuration * 60000)
 
-      // Sjekk for overlappende bookinger (unntatt denne bookingen)
-      // PENDING, CONFIRMED, IN_PROGRESS blokkerer. CANCELLED, COMPLETED, NO_SHOW teller ikke.
-      const overlappingBookings = await prisma.booking.findMany({
-        where: {
-          id: { not: id },
-          status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] },
-          OR: [
-            {
-              AND: [
-                { scheduledTime: { lte: scheduledDateTime } },
-                { estimatedEnd: { gt: scheduledDateTime } },
-              ],
-            },
-            {
-              AND: [
-                { scheduledTime: { lt: estimatedEnd } },
-                { estimatedEnd: { gte: estimatedEnd } },
-              ],
-            },
-            {
-              AND: [
-                { scheduledTime: { gte: scheduledDateTime } },
-                { estimatedEnd: { lte: estimatedEnd } },
-              ],
-            },
-          ],
-        },
-      })
-
-      if (overlappingBookings.length > 0) {
-        return NextResponse.json(
-          { 
-            message: 'Det valgte tidspunktet er ikke tilgjengelig. Det overlapper med en annen booking.',
-            overlappingBookings: overlappingBookings.map(b => ({
-              id: b.id,
-              time: b.scheduledTime,
-            }))
-          },
-          { status: 409 }
-        )
-      }
-
+      // Admin har full kontroll – overlappsjekk hoppes over, admin bestemmer selv
       // Oppdater booking med ny dato/tid
       const updatedBooking = await prisma.booking.update({
         where: { id },
