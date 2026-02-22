@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
-import { MultiBookingWizard } from '@/components/booking/multi-booking-wizard'
+import AdminBookingWizard from '@/components/admin/admin-booking-wizard'
 
 async function getBookingData() {
   const [services, vehicleTypes, settings] = await Promise.all([
@@ -66,10 +66,9 @@ export default async function NewBookingPage() {
       </div>
 
       {/* Booking Wizard */}
-      <MultiBookingWizard 
-        services={services} 
+      <AdminBookingWizard
+        services={services}
         vehicleTypes={vehicleTypes as any}
-        isAdminBooking={true}
         businessHoursStart={businessHoursStart}
         businessHoursEnd={businessHoursEnd}
       />
