@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const roleParam = searchParams.get('role')
     const emailExact = searchParams.get('email')
+    const searchQuery = searchParams.get('search')
     const page = parseInt(searchParams.get('page') || '1', 10)
     const limit = parseInt(searchParams.get('limit') || '100', 10)
 
@@ -27,16 +28,28 @@ export async function GET(req: NextRequest) {
     if (emailExact) {
       const user = await prisma.user.findUnique({
         where: { email: emailExact },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          phone: true,
-          role: true,
-        },
+        select: { id: true, firstName: true, lastName: true, email: true, phone: true, role: true },
       })
       return NextResponse.json(user ? { user } : { user: null })
+    }
+
+    // Fritekst-søk på navn, e-post eller telefon (for booking wizard søk)
+    if (searchQuery) {
+      const users = await prisma.user.findMany({
+        where: {
+          role: { not: 'ADMIN' },
+          OR: [
+            { firstName: { contains: searchQuery } },
+            { lastName: { contains: searchQuery } },
+            { email: { contains: searchQuery } },
+            { phone: { contains: searchQuery } },
+          ],
+        },
+        select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+        orderBy: { firstName: 'asc' },
+        take: 10,
+      })
+      return NextResponse.json({ users })
     }
     
     // Valider paginering parametere
