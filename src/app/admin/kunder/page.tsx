@@ -1,7 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -10,34 +9,31 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  MoreHorizontal,
-  Users,
-  Mail,
-  Phone,
-  Calendar,
-  Search,
-  UserPlus,
-  Eye,
-  Edit,
-  Shield,
-} from 'lucide-react'
+import { Users, Mail, Phone, Calendar, UserPlus } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { AddCustomerDialog } from '@/components/admin/add-customer-dialog'
+import { CustomerSearch } from '@/components/admin/customer-search'
+import { CustomerActionsMenu } from '@/components/admin/customer-actions-menu'
 import Link from 'next/link'
 
 const ITEMS_PER_PAGE = 20
 
-async function getCustomers(page: number) {
+async function getCustomers(page: number, search?: string) {
   try {
-    const where = { role: 'USER' as const }
+    const where: Prisma.UserWhereInput = {
+      role: 'USER',
+      ...(search
+        ? {
+            OR: [
+              { firstName: { contains: search } },
+              { lastName: { contains: search } },
+              { email: { contains: search } },
+              { phone: { contains: search } },
+            ],
+          }
+        : {}),
+    }
     const totalCount = await prisma.user.count({ where })
     const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE))
     const currentPage = Math.min(Math.max(1, page), totalPages)
@@ -159,11 +155,11 @@ function getRoleBadge(role: string) {
 export default async function AdminCustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>
+  searchParams: Promise<{ page?: string; search?: string }>
 }) {
-  const { page } = await searchParams
+  const { page, search } = await searchParams
   const requestedPage = Number(page) || 1
-  const { customers, totalCount, totalPages, currentPage } = await getCustomers(requestedPage)
+  const { customers, totalCount, totalPages, currentPage } = await getCustomers(requestedPage, search)
   const stats = await getCustomerStats()
   const hasCustomers = customers.length > 0
   const showingStart = hasCustomers ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0
@@ -226,20 +222,14 @@ export default async function AdminCustomersPage({
       <Card>
         <CardHeader>
           <CardTitle>Søk og filter</CardTitle>
+          {search && (
+            <p className="text-sm text-muted-foreground">
+              Viser resultater for: <strong>&quot;{search}&quot;</strong>
+            </p>
+          )}
         </CardHeader>
         <CardContent>
-          <div className="flex items-center space-x-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Søk etter navn, e-post eller telefon..."
-                className="pl-10"
-              />
-            </div>
-            <Button variant="outline">
-              Filtrer
-            </Button>
-          </div>
+          <CustomerSearch />
         </CardContent>
       </Card>
 
@@ -321,43 +311,12 @@ export default async function AdminCustomersPage({
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem asChild>
-                                <Link href={`/admin/kunder/${customer.id}`}>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  Se detaljer
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link href={`/admin/kunder/${customer.id}?edit=true`}>
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  Rediger kunde
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link href={`/admin/bestillinger?kunde=${customer.id}`}>
-                                  <Calendar className="mr-2 h-4 w-4" />
-                                  Se bestillinger
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              {customer.role === 'USER' && (
-                                <DropdownMenuItem>
-                                  <Shield className="mr-2 h-4 w-4" />
-                                  Gjør til admin
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem className="text-red-600">
-                                Deaktiver konto
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <CustomerActionsMenu
+                            customerId={customer.id}
+                            customerName={`${customer.firstName} ${customer.lastName}`}
+                            role={customer.role}
+                            hasBookings={customer.stats.totalBookings > 0}
+                          />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -379,7 +338,7 @@ export default async function AdminCustomersPage({
                     {currentPage === 1 ? (
                       <span>Forrige</span>
                     ) : (
-                      <Link href={`/admin/kunder?page=${currentPage - 1}`}>Forrige</Link>
+                      <Link href={`/admin/kunder?page=${currentPage - 1}${search ? `&search=${encodeURIComponent(search)}` : ''}`}>Forrige</Link>
                     )}
                   </Button>
                   <span className="text-sm text-gray-600">
@@ -394,7 +353,7 @@ export default async function AdminCustomersPage({
                     {currentPage === totalPages ? (
                       <span>Neste</span>
                     ) : (
-                      <Link href={`/admin/kunder?page=${currentPage + 1}`}>Neste</Link>
+                      <Link href={`/admin/kunder?page=${currentPage + 1}${search ? `&search=${encodeURIComponent(search)}` : ''}`}>Neste</Link>
                     )}
                   </Button>
                 </div>

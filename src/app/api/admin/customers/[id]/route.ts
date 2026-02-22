@@ -74,6 +74,54 @@ export async function PATCH(
   }
 }
 
+// DELETE /api/admin/customers/[id] - Deaktiver kunde (anonymiserer e-post slik at den kan gjenbrukes)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session || session.user.role !== 'ADMIN') {
+      return NextResponse.json({ message: 'Ingen tilgang' }, { status: 403 })
+    }
+
+    const { id } = await params
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true, role: true },
+    })
+
+    if (!user) {
+      return NextResponse.json({ message: 'Kunde ikke funnet' }, { status: 404 })
+    }
+
+    if (user.role === 'ADMIN') {
+      return NextResponse.json(
+        { message: 'Admin-kontoer kan ikke deaktiveres her' },
+        { status: 400 }
+      )
+    }
+
+    // Anonymiser e-posten slik at den originale adressen frigjøres
+    const anonymizedEmail = `deaktivert_${id}_${Date.now()}@ugyldig.svampen`
+
+    await prisma.user.update({
+      where: { id },
+      data: { email: anonymizedEmail },
+    })
+
+    return NextResponse.json({ message: 'Konto deaktivert' })
+  } catch (error) {
+    console.error('Error deactivating customer:', error)
+    return NextResponse.json(
+      { message: 'Kunne ikke deaktivere konto' },
+      { status: 500 }
+    )
+  }
+}
+
 // GET /api/admin/customers/[id] - Hent kunde
 export async function GET(
   request: NextRequest,

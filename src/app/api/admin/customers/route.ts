@@ -19,8 +19,25 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url)
     const roleParam = searchParams.get('role')
+    const emailExact = searchParams.get('email')
     const page = parseInt(searchParams.get('page') || '1', 10)
     const limit = parseInt(searchParams.get('limit') || '100', 10)
+
+    // Eksakt e-post-oppslag (for booking wizard autofyll)
+    if (emailExact) {
+      const user = await prisma.user.findUnique({
+        where: { email: emailExact },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          role: true,
+        },
+      })
+      return NextResponse.json(user ? { user } : { user: null })
+    }
     
     // Valider paginering parametere
     if (page < 1 || limit < 1 || limit > 500) {
