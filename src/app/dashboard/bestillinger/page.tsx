@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale'
 import CancelBookingButton from '@/components/dashboard/cancel-booking-button'
+import { priceWithVat } from '@/lib/pricing'
 
 interface Booking {
   id: string
@@ -150,11 +151,14 @@ export default function BookingsPage() {
                     </div>
                   ))}
                   
-                  <div className="flex flex-col gap-2 pt-3 border-t">
+                    <div className="flex flex-col gap-2 pt-3 border-t">
                     <div className="flex justify-between items-center">
-                      <p className="text-lg font-bold text-blue-600">
-                        kr {Number(booking.totalPrice).toLocaleString()},-
-                      </p>
+                      <div>
+                        <p className="text-lg font-bold text-blue-600">
+                          kr {priceWithVat(Number(booking.totalPrice)).toLocaleString()},-
+                        </p>
+                        <p className="text-xs text-gray-500">Inkl. mva</p>
+                      </div>
                       <div className="flex gap-2">
                         <CancelBookingButton 
                           bookingId={booking.id} 

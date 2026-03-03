@@ -315,9 +315,20 @@ export async function sendAdminNotificationEmail(data: BookingEmailData) {
 
             ${customerNotesBlock}
             
-            <p style="font-size: 24px; color: #166534; margin-top: 30px;">
-              <strong>Total: kr ${Number(data.totalPrice).toLocaleString()},-</strong>
-            </p>
+            <table style="margin-top: 30px; width: 100%; max-width: 300px; margin-left: auto;">
+              <tr>
+                <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Subtotal (eksl. mva):</td>
+                <td style="padding: 4px 0; text-align: right; color: #374151; font-size: 14px;">kr ${Number(data.totalPrice).toLocaleString()},-</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">MVA (25%):</td>
+                <td style="padding: 4px 0; text-align: right; color: #374151; font-size: 14px;">kr ${Math.round(Number(data.totalPrice) * 0.25).toLocaleString()},-</td>
+              </tr>
+              <tr style="border-top: 2px solid #d1d5db;">
+                <td style="padding: 8px 0 0 0; color: #166534; font-size: 18px; font-weight: 700;">Totalt inkl. mva:</td>
+                <td style="padding: 8px 0 0 0; text-align: right; color: #166534; font-size: 18px; font-weight: 700;">kr ${priceWithVat(Number(data.totalPrice)).toLocaleString()},-</td>
+              </tr>
+            </table>
             
             <div style="margin-top: 30px; padding: 15px; background-color: #eff6ff; border-radius: 8px;">
               <p style="margin: 0; color: #1e40af;">
@@ -473,7 +484,7 @@ export async function sendInvoiceEmail(data: InvoiceEmailData) {
                   <tr style="background-color: #f3f4f6;">
                     <th style="padding: 12px 10px; text-align: left; color: #6b7280; font-size: 14px;">Beskrivelse</th>
                     <th style="padding: 12px 10px; text-align: right; color: #6b7280; font-size: 14px;">Antall</th>
-                    <th style="padding: 12px 10px; text-align: right; color: #6b7280; font-size: 14px;">Beløp</th>
+                    <th style="padding: 12px 10px; text-align: right; color: #6b7280; font-size: 14px;">Beløp (eksl. mva)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -485,13 +496,19 @@ export async function sendInvoiceEmail(data: InvoiceEmailData) {
               <div style="border-top: 2px solid #e5e7eb; padding-top: 20px;">
                 <table style="width: 100%; max-width: 350px; margin-left: auto;">
                   <tr>
-                    <td style="padding: 8px 0; color: #6b7280; font-size: 16px;">Subtotal:</td>
-                    <td style="padding: 8px 0; text-align: right; color: #1f2937; font-size: 16px;">
+                    <td style="padding: 8px 0; color: #6b7280; font-size: 15px;">Subtotal (eksl. mva):</td>
+                    <td style="padding: 8px 0; text-align: right; color: #1f2937; font-size: 15px;">
                       kr ${Number(data.amount).toLocaleString()},-
                     </td>
                   </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; font-size: 15px;">MVA (25%):</td>
+                    <td style="padding: 8px 0; text-align: right; color: #1f2937; font-size: 15px;">
+                      kr ${(Number(data.totalAmount) - Number(data.amount)).toLocaleString()},-
+                    </td>
+                  </tr>
                   <tr style="border-top: 2px solid #1f2937;">
-                    <td style="padding: 15px 0 0 0; color: #1f2937; font-size: 20px; font-weight: 700;">TOTAL:</td>
+                    <td style="padding: 15px 0 0 0; color: #1f2937; font-size: 20px; font-weight: 700;">Totalt å betale:</td>
                     <td style="padding: 15px 0 0 0; text-align: right; color: #2563eb; font-size: 24px; font-weight: 700;">
                       kr ${Number(data.totalAmount).toLocaleString()},-
                     </td>

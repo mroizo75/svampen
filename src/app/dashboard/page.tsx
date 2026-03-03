@@ -12,6 +12,7 @@ import {
 import Link from 'next/link'
 import { getServerAuthSession } from '@/lib/auth-utils'
 import { prisma } from '@/lib/prisma'
+import { priceWithVat } from '@/lib/pricing'
 
 async function getUserBookings(userId: string) {
   try {
@@ -285,7 +286,10 @@ export default async function DashboardPage() {
                     </div>
                     <div className="flex items-center space-x-4">
                       {getStatusBadge(booking.status)}
-                      <span className="font-semibold">kr {booking.totalPrice.toLocaleString('nb-NO')}</span>
+                      <div className="text-right">
+                        <div className="font-semibold">kr {priceWithVat(Number(booking.totalPrice)).toLocaleString('nb-NO')}</div>
+                        <div className="text-xs text-gray-500">Inkl. mva</div>
+                      </div>
                     </div>
                   </div>
                 )

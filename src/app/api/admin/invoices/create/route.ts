@@ -170,8 +170,8 @@ export async function POST(request: Request) {
         tripletexPdfUrl: pdfUrl,
         tripletexVoucher: tripletexInvoice.voucherNumber,
         amount: Number(booking.totalPrice),
-        taxAmount: Number(booking.totalPrice) * 0.2, // 20% av totalbeløp som MVA
-        totalAmount: Number(booking.totalPrice),
+        taxAmount: Math.round(Number(booking.totalPrice) * 0.25),
+        totalAmount: Math.round(Number(booking.totalPrice) * 1.25),
         status: 'DRAFT',
         issuedDate: invoiceDate,
         dueDate,
