@@ -424,12 +424,28 @@ export async function POST(request: NextRequest) {
           },
         },
       })
-      
+
       if (closedDate) {
-        return NextResponse.json(
-          { message: `Vi holder stengt denne dagen: ${closedDate.reason}` },
-          { status: 400 }
-        )
+        if (!closedDate.startTime || !closedDate.endTime) {
+          return NextResponse.json(
+            { message: `Vi holder stengt denne dagen: ${closedDate.reason}` },
+            { status: 400 }
+          )
+        }
+
+        // Delvis stengt — sjekk om bookingtiden overlapper stengevinduet
+        const [csH, csM] = closedDate.startTime.split(':').map(Number)
+        const [ceH, ceM] = closedDate.endTime.split(':').map(Number)
+        const windowStart = new Date(Date.UTC(year, month - 1, day, csH, csM, 0, 0))
+        const windowEnd = new Date(Date.UTC(year, month - 1, day, ceH, ceM, 0, 0))
+        const overlaps = bookingTime < windowEnd && estimatedEnd > windowStart
+
+        if (overlaps) {
+          return NextResponse.json(
+            { message: `Vi holder stengt mellom ${closedDate.startTime}–${closedDate.endTime} denne dagen: ${closedDate.reason}` },
+            { status: 400 }
+          )
+        }
       }
     }
 

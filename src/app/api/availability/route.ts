@@ -81,8 +81,8 @@ export async function GET(request: NextRequest) {
         },
       },
     })
-    
-    if (closedDate) {
+
+    if (closedDate && !closedDate.startTime && !closedDate.endTime) {
       return NextResponse.json({ 
         availableTimes: [],
         message: `Vi holder stengt denne dagen: ${closedDate.reason}`,
@@ -157,22 +157,24 @@ export async function GET(request: NextRequest) {
       })
     }
     
+    // Hjelpefunksjon: sjekk om tidsrom overlapper med delvis stengevindu (startTime/endTime)
+    const overlapsClosedWindow = (proposedStart: Date, proposedEnd: Date): boolean => {
+      if (!closedDate?.startTime || !closedDate?.endTime) return false
+      const [csH, csM] = closedDate.startTime.split(':').map(Number)
+      const [ceH, ceM] = closedDate.endTime.split(':').map(Number)
+      const windowStart = new Date(year, month - 1, day, csH, csM, 0, 0)
+      const windowEnd = new Date(year, month - 1, day, ceH, ceM, 0, 0)
+      return proposedStart < windowEnd && proposedEnd > windowStart
+    }
+
     // Hjelpefunksjon for å sjekke om et tidsrom overlapper med eksisterende bookinger
     const isTimeSlotAvailable = (proposedStart: Date, proposedEnd: Date): boolean => {
+      if (overlapsClosedWindow(proposedStart, proposedEnd)) return false
+
       const hasConflict = existingBookings.some(booking => {
         const bookingStart = new Date(booking.scheduledTime)
         const bookingEnd = new Date(booking.estimatedEnd)
-        
-        // Sjekk om det er overlapp:
-        // Det er overlapp hvis:
-        // 1. Ny booking starter før eksisterende slutter OG
-        // 2. Ny booking slutter etter eksisterende starter
-        // 
-        // Med andre ord: IKKE overlapp bare hvis:
-        // - Ny booking slutter FØR eksisterende starter (proposedEnd <= bookingStart)
-        // - Ny booking starter ETTER eksisterende slutter (proposedStart >= bookingEnd)
         const overlaps = proposedStart < bookingEnd && proposedEnd > bookingStart
-        
         return overlaps
       })
       

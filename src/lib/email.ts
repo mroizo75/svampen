@@ -573,6 +573,109 @@ export async function sendInvoiceEmail(data: InvoiceEmailData) {
   }
 }
 
+interface BookingReminderEmailData {
+  customerName: string
+  customerEmail: string
+  scheduledDate: string
+  scheduledTime: string
+  bookingId: string
+  vehicleTypes: string[]
+}
+
+export async function sendBookingReminderEmail(data: BookingReminderEmailData) {
+  try {
+    if (!process.env.RESEND_API_KEY) {
+      console.error('❌ Kan ikke sende påminnelses-e-post: RESEND_API_KEY mangler')
+      return { success: false, error: 'RESEND_API_KEY er ikke konfigurert' }
+    }
+
+    const formattedDate = new Date(data.scheduledDate).toLocaleDateString('nb-NO', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+
+    const vehicleList = data.vehicleTypes.map(v => `<li>${escapeHtml(v)}</li>`).join('')
+
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Påminnelse om time hos Svampen</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+            <div style="background: linear-gradient(to right, #2563eb, #1e40af); padding: 40px 20px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px;">Påminnelse om time!</h1>
+              <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 16px;">Du har time hos Svampen i morgen</p>
+            </div>
+            <div style="padding: 40px 20px;">
+              <p style="margin: 0 0 20px 0; color: #1f2937; font-size: 16px;">Hei ${escapeHtml(data.customerName)},</p>
+              <p style="margin: 0 0 20px 0; color: #4b5563; line-height: 1.6;">
+                Dette er en vennlig påminnelse om at du har en time hos oss i morgen.
+              </p>
+              <div style="background-color: #eff6ff; border-left: 4px solid #2563eb; padding: 20px; margin: 30px 0; border-radius: 4px;">
+                <h2 style="margin: 0 0 15px 0; color: #1e40af; font-size: 18px;">📅 Din time</h2>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; width: 40%;">Bestillingsnr:</td>
+                    <td style="padding: 8px 0; color: #1f2937; font-weight: 600;">#${data.bookingId.substring(0, 8)}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280;">Dato:</td>
+                    <td style="padding: 8px 0; color: #1f2937; font-weight: 600;">${formattedDate}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280;">Tid:</td>
+                    <td style="padding: 8px 0; color: #1f2937; font-weight: 600;">kl. ${escapeHtml(data.scheduledTime)}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; vertical-align: top;">Kjøretøy:</td>
+                    <td style="padding: 8px 0; color: #1f2937; font-weight: 600;"><ul style="margin: 0; padding-left: 18px;">${vehicleList}</ul></td>
+                  </tr>
+                </table>
+              </div>
+              <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 30px 0; border-radius: 4px;">
+                <p style="margin: 0 0 10px 0; color: #92400e; font-weight: 600;">⚠️ Avbestilling</p>
+                <p style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.6;">
+                  Må du avbestille? Gi oss beskjed så snart som mulig.
+                  Timer som ikke møtes vil bli fakturert 50%.
+                </p>
+              </div>
+              <div style="margin-top: 30px; padding: 20px; background-color: #f9fafb; border-radius: 8px;">
+                <h3 style="margin: 0 0 15px 0; color: #1f2937; font-size: 16px;">📞 Kontakt oss</h3>
+                <p style="margin: 0 0 8px 0; color: #4b5563; font-size: 14px;"><strong>Telefon:</strong> 38 34 74 70</p>
+                <p style="margin: 0; color: #4b5563; font-size: 14px;"><strong>E-post:</strong> joachim@amento.no</p>
+              </div>
+            </div>
+            <div style="background-color: #f9fafb; padding: 30px 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                © ${new Date().getFullYear()} Svampen - Profesjonell bil- og båtpleie
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `
+
+    const result = await resend.emails.send({
+      from: 'Svampen Booking <booking@innut.no>',
+      to: data.customerEmail,
+      subject: `Påminnelse: Time hos Svampen i morgen – ${formattedDate} kl. ${data.scheduledTime}`,
+      html: emailHtml,
+    })
+
+    console.log(`✅ Påminnelses-e-post sendt til ${data.customerEmail}`)
+    return { success: true, data: result }
+  } catch (error) {
+    console.error('❌ Error sending reminder email:', error)
+    return { success: false, error }
+  }
+}
+
 // Generic sendEmail function for custom emails
 interface SendEmailOptions {
   to: string | string[]

@@ -26,6 +26,8 @@ interface DateTimeSelectorProps {
 interface ClosedDate {
   id: string
   date: Date
+  startTime?: string | null
+  endTime?: string | null
 }
 
 export function DateTimeSelector({
@@ -52,9 +54,10 @@ export function DateTimeSelector({
         if (response.ok) {
           const data = await response.json()
           setClosedDates(data.map((d: any) => ({
-            ...d,
-            // Parse dato uten timezone-konvertering
+            id: d.id,
             date: new Date(String(d.date).split('T')[0] + 'T12:00:00'),
+            startTime: d.startTime ?? null,
+            endTime: d.endTime ?? null,
           })))
         }
       } catch (error) {
@@ -218,17 +221,16 @@ export function DateTimeSelector({
                 // Sjekk om dato er norsk helligdag
                 if (isNorwegianHoliday(date).isHoliday) return true
                 
-                // Sjekk om dato er stengt (fra database)
+                // Sjekk om dato er stengt hel dag (fra database)
+                // Delvis stengte dager (startTime/endTime satt) skal ikke grå ut hele dagen
                 const isClosed = closedDates.some(closedDate => {
-                  const checkYear = closedDate.date.getFullYear()
-                  const checkMonth = closedDate.date.getMonth()
-                  const checkDay = closedDate.date.getDate()
-                  
-                  return date.getFullYear() === checkYear &&
-                         date.getMonth() === checkMonth &&
-                         date.getDate() === checkDay
+                  const sameDay =
+                    date.getFullYear() === closedDate.date.getFullYear() &&
+                    date.getMonth() === closedDate.date.getMonth() &&
+                    date.getDate() === closedDate.date.getDate()
+                  return sameDay && !closedDate.startTime && !closedDate.endTime
                 })
-                
+
                 return isClosed
               }}
               initialFocus

@@ -201,7 +201,8 @@ model Booking {
   scheduledTime   DateTime
   totalDuration   Int           // Total varighet i minutter
   estimatedEnd    DateTime
-  
+  reminderSentAt  DateTime?       // Tidspunkt påminnelse ble sendt (idempotens-guard)
+
   // Totaler
   totalPrice      Decimal       @db.Decimal(10, 2)
   
