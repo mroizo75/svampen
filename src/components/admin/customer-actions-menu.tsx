@@ -18,12 +18,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { MoreHorizontal, Eye, Edit, Calendar, Shield, UserX, Loader2 } from 'lucide-react'
+import { MoreHorizontal, Eye, Edit, Calendar, Shield, UserX, Loader2, Mail } from 'lucide-react'
 import Link from 'next/link'
+import { ChangeCustomerEmailDialog } from '@/components/admin/change-customer-email-dialog'
 
 interface CustomerActionsMenuProps {
   customerId: string
   customerName: string
+  customerEmail: string
   role: string
   hasBookings: boolean
 }
@@ -31,11 +33,13 @@ interface CustomerActionsMenuProps {
 export function CustomerActionsMenu({
   customerId,
   customerName,
+  customerEmail,
   role,
   hasBookings,
 }: CustomerActionsMenuProps) {
   const router = useRouter()
   const [deactivateOpen, setDeactivateOpen] = useState(false)
+  const [emailOpen, setEmailOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -80,6 +84,10 @@ export function CustomerActionsMenu({
               Rediger kunde
             </Link>
           </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setEmailOpen(true)}>
+            <Mail className="mr-2 h-4 w-4" />
+            Endre e-post
+          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href={`/admin/bestillinger?kunde=${customerId}`}>
               <Calendar className="mr-2 h-4 w-4" />
@@ -102,6 +110,14 @@ export function CustomerActionsMenu({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <ChangeCustomerEmailDialog
+        customerId={customerId}
+        customerName={customerName}
+        currentEmail={customerEmail}
+        open={emailOpen}
+        onOpenChange={setEmailOpen}
+      />
 
       <Dialog open={deactivateOpen} onOpenChange={setDeactivateOpen}>
         <DialogContent>

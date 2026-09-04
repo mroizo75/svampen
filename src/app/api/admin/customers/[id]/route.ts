@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { generatePlaceholderEmail, isRealCustomerEmail } from '@/lib/customer-email'
 
 // PATCH /api/admin/customers/[id] - Oppdater kunde
@@ -21,28 +22,10 @@ export async function PATCH(
 
     const { id } = await params
     const data = await request.json()
-
-    // Valider input
     const { firstName, lastName, email, phone, address, postalCode, city } = data
-
-    if (!firstName || !lastName) {
-      return NextResponse.json(
-        { message: 'Fornavn og etternavn er påkrevd' },
-        { status: 400 }
-      )
-    }
-
-    const hasRealEmail = isRealCustomerEmail(email)
-    if (!hasRealEmail && !phone?.trim()) {
-      return NextResponse.json(
-        { message: 'Oppgi e-post eller telefonnummer' },
-        { status: 400 }
-      )
-    }
 
     const existingCustomer = await prisma.user.findUnique({
       where: { id },
-      select: { email: true },
     })
 
     if (!existingCustomer) {
@@ -52,23 +35,62 @@ export async function PATCH(
       )
     }
 
-    const emailToUse = hasRealEmail
-      ? email.trim()
-      : (isRealCustomerEmail(existingCustomer.email)
-          ? generatePlaceholderEmail(firstName, lastName)
-          : existingCustomer.email)
+    const nextFirstName =
+      typeof firstName === 'string' && firstName.trim()
+        ? firstName.trim()
+        : existingCustomer.firstName
+    const nextLastName =
+      typeof lastName === 'string' && lastName.trim()
+        ? lastName.trim()
+        : existingCustomer.lastName
+    const nextPhone =
+      phone !== undefined ? (typeof phone === 'string' && phone.trim() ? phone.trim() : null) : existingCustomer.phone
 
-    if (hasRealEmail) {
+    let nextEmail = existingCustomer.email
+    if (email !== undefined) {
+      const trimmedEmail = typeof email === 'string' ? email.trim() : ''
+
+      if (isRealCustomerEmail(trimmedEmail)) {
+        nextEmail = trimmedEmail.toLowerCase()
+      } else if (!trimmedEmail) {
+        if (!nextPhone) {
+          return NextResponse.json(
+            { message: 'Oppgi e-post eller telefonnummer' },
+            { status: 400 }
+          )
+        }
+        nextEmail = isRealCustomerEmail(existingCustomer.email)
+          ? generatePlaceholderEmail(nextFirstName, nextLastName)
+          : existingCustomer.email
+      } else {
+        return NextResponse.json(
+          { message: 'Ugyldig e-postadresse' },
+          { status: 400 }
+        )
+      }
+    }
+
+    if (!isRealCustomerEmail(nextEmail) && !nextPhone) {
+      return NextResponse.json(
+        { message: 'Oppgi e-post eller telefonnummer' },
+        { status: 400 }
+      )
+    }
+
+    if (isRealCustomerEmail(nextEmail) && nextEmail !== existingCustomer.email.toLowerCase()) {
       const existingUser = await prisma.user.findFirst({
         where: {
-          email: emailToUse,
+          email: nextEmail,
           NOT: { id },
         },
+        select: { firstName: true, lastName: true },
       })
 
       if (existingUser) {
         return NextResponse.json(
-          { message: 'E-postadressen er allerede i bruk' },
+          {
+            message: `E-posten tilhører allerede kunden "${existingUser.firstName} ${existingUser.lastName}". Deaktiver den kontoen først hvis det er en feilregistrering.`,
+          },
           { status: 400 }
         )
       }
@@ -77,19 +99,25 @@ export async function PATCH(
     const updatedCustomer = await prisma.user.update({
       where: { id },
       data: {
-        firstName,
-        lastName,
-        email: emailToUse,
-        phone: phone || null,
-        address: address || null,
-        postalCode: postalCode || null,
-        city: city || null,
+        firstName: nextFirstName,
+        lastName: nextLastName,
+        email: nextEmail,
+        phone: nextPhone,
+        address: address !== undefined ? (address || null) : existingCustomer.address,
+        postalCode: postalCode !== undefined ? (postalCode || null) : existingCustomer.postalCode,
+        city: city !== undefined ? (city || null) : existingCustomer.city,
       },
     })
 
     return NextResponse.json(updatedCustomer)
   } catch (error) {
     console.error('Error updating customer:', error)
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return NextResponse.json(
+        { message: 'E-postadressen er allerede i bruk' },
+        { status: 400 }
+      )
+    }
     return NextResponse.json(
       { message: 'Kunne ikke oppdatere kunde' },
       { status: 500 }

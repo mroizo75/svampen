@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { EditCustomerForm } from '@/components/admin/edit-customer-form'
+import { ChangeCustomerEmailDialog } from '@/components/admin/change-customer-email-dialog'
 import { formatCustomerEmail } from '@/lib/customer-email'
 
 function serializeCustomer(customer: NonNullable<Awaited<ReturnType<typeof getRawCustomer>>>) {
@@ -215,6 +216,13 @@ export default async function CustomerDetailsPage({
                     E-post
                   </p>
                   <p className="font-medium">{formatCustomerEmail(customer.email)}</p>
+                  <div className="mt-2">
+                    <ChangeCustomerEmailDialog
+                      customerId={customer.id}
+                      customerName={`${customer.firstName} ${customer.lastName}`}
+                      currentEmail={customer.email}
+                    />
+                  </div>
                 </div>
 
                 {customer.phone && (

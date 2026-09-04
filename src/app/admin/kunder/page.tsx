@@ -315,6 +315,7 @@ export default async function AdminCustomersPage({
                           <CustomerActionsMenu
                             customerId={customer.id}
                             customerName={`${customer.firstName} ${customer.lastName}`}
+                            customerEmail={customer.email}
                             role={customer.role}
                             hasBookings={customer.stats.totalBookings > 0}
                           />

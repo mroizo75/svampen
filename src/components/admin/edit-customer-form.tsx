@@ -118,13 +118,14 @@ export function EditCustomerForm({ customer }: EditCustomerFormProps) {
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="ny@epost.no"
               required={!formData.phone}
             />
-            {!isRealCustomerEmail(customer.email) && (
-              <p className="text-xs text-gray-500">
-                Ingen e-post registrert. Fyll inn for å kunne sende bekreftelser på e-post.
-              </p>
-            )}
+            <p className="text-xs text-gray-500">
+              {isRealCustomerEmail(customer.email)
+                ? 'Endre feltet og lagre hvis kunden har fått ny e-postadresse.'
+                : 'Ingen e-post registrert. Fyll inn for å kunne sende bekreftelser på e-post.'}
+            </p>
           </div>
 
           <div className="space-y-2">
