@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Save, X, AlertCircle } from 'lucide-react'
+import { isRealCustomerEmail } from '@/lib/customer-email'
 
 interface Customer {
   id: string
@@ -32,7 +33,7 @@ export function EditCustomerForm({ customer }: EditCustomerFormProps) {
   const [formData, setFormData] = useState({
     firstName: customer.firstName,
     lastName: customer.lastName,
-    email: customer.email,
+    email: isRealCustomerEmail(customer.email) ? customer.email : '',
     phone: customer.phone || '',
     address: customer.address || '',
     postalCode: customer.postalCode || '',
@@ -111,24 +112,30 @@ export function EditCustomerForm({ customer }: EditCustomerFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">E-post *</Label>
+            <Label htmlFor="email">E-post {formData.phone ? '(valgfri)' : '*'}</Label>
             <Input
               id="email"
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
+              required={!formData.phone}
             />
+            {!isRealCustomerEmail(customer.email) && (
+              <p className="text-xs text-gray-500">
+                Ingen e-post registrert. Fyll inn for å kunne sende bekreftelser på e-post.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Telefonnummer</Label>
+            <Label htmlFor="phone">Telefonnummer {formData.email ? '' : '*'}</Label>
             <Input
               id="phone"
               type="tel"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               placeholder="+47 xxx xx xxx"
+              required={!formData.email}
             />
           </div>
 

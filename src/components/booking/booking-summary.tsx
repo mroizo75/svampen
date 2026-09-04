@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale'
+import { formatCustomerEmail } from '@/lib/customer-email'
 
 interface Service {
   id: string
@@ -229,7 +230,7 @@ export function BookingSummary({
               </div>
               <div>
                 <span className="text-sm text-blue-600">E-post:</span>
-                <p className="font-medium">{bookingData.customerInfo.email}</p>
+                <p className="font-medium">{formatCustomerEmail(bookingData.customerInfo.email)}</p>
               </div>
               <div>
                 <span className="text-sm text-blue-600">Telefon:</span>

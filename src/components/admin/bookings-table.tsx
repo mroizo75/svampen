@@ -35,6 +35,7 @@ import {
   Clock,
   Building2,
 } from 'lucide-react'
+import { formatCustomerEmail } from '@/lib/customer-email'
 
 interface BookingVehicle {
   vehicleType: {
@@ -256,7 +257,7 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
                       {booking.user.firstName} {booking.user.lastName}
                     </div>
                     <div className="text-[10px] sm:text-xs text-gray-500 truncate max-w-[150px]">
-                      {booking.user.email}
+                      {formatCustomerEmail(booking.user.email)}
                     </div>
                   </div>
                 </TableCell>

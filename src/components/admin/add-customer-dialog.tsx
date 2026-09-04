@@ -182,7 +182,7 @@ export function AddCustomerDialog() {
 
             <div className="space-y-2">
               <Label htmlFor="email">
-                E-post <span className="text-red-500">*</span>
+                E-post {formData.phone ? '(valgfri)' : <span className="text-red-500">*</span>}
               </Label>
               <Input
                 id="email"
@@ -191,13 +191,20 @@ export function AddCustomerDialog() {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="ola@eksempel.no"
-                required
+                required={!formData.phone}
                 disabled={loading}
               />
+              <p className="text-xs text-gray-500">
+                {formData.phone
+                  ? 'Valgfri når telefon er oppgitt'
+                  : 'Påkrevd hvis telefon ikke oppgis'}
+              </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Telefon</Label>
+              <Label htmlFor="phone">
+                Telefon {formData.email ? '(valgfri)' : <span className="text-red-500">*</span>}
+              </Label>
               <Input
                 id="phone"
                 name="phone"
@@ -205,10 +212,13 @@ export function AddCustomerDialog() {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="+47 123 45 678"
+                required={!formData.email}
                 disabled={loading}
               />
               <p className="text-xs text-gray-500">
-                Valgfritt - brukes til SMS-varslinger
+                {formData.email
+                  ? 'Valgfri når e-post er oppgitt – brukes til SMS-varslinger'
+                  : 'Påkrevd hvis e-post ikke oppgis'}
               </p>
             </div>
 

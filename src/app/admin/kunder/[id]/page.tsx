@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { EditCustomerForm } from '@/components/admin/edit-customer-form'
+import { formatCustomerEmail } from '@/lib/customer-email'
 
 function serializeCustomer(customer: NonNullable<Awaited<ReturnType<typeof getRawCustomer>>>) {
   return {
@@ -213,7 +214,7 @@ export default async function CustomerDetailsPage({
                     <Mail className="mr-2 h-3 w-3" />
                     E-post
                   </p>
-                  <p className="font-medium">{customer.email}</p>
+                  <p className="font-medium">{formatCustomerEmail(customer.email)}</p>
                 </div>
 
                 {customer.phone && (

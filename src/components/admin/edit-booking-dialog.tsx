@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/badge'
 import { Edit, Calendar as CalendarIcon, Clock, Loader2, Plus, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale'
+import { isRealCustomerEmail } from '@/lib/customer-email'
+import { isNorwegianMobileNumber } from '@/lib/sms'
 
 type BookingStatus = 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
 
@@ -60,6 +62,8 @@ interface EditBookingDialogProps {
   currentNotes?: string
   duration: number
   bookingVehicles: BookingVehicleSummary[]
+  customerEmail?: string | null
+  customerPhone?: string | null
 }
 
 export function EditBookingDialog({ 
@@ -70,6 +74,8 @@ export function EditBookingDialog({
   currentNotes,
   duration,
   bookingVehicles,
+  customerEmail,
+  customerPhone,
 }: EditBookingDialogProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -554,19 +560,43 @@ export function EditBookingDialog({
           )}
 
           {/* Varsling */}
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="sendNotification"
-              checked={sendNotification}
-              onCheckedChange={(checked) => setSendNotification(checked as boolean)}
-            />
-            <Label
-              htmlFor="sendNotification"
-              className="text-sm font-normal cursor-pointer"
-            >
-              Send varsel til kunde om endringene (e-post)
-            </Label>
-          </div>
+          {(() => {
+            const canEmail = isRealCustomerEmail(customerEmail)
+            const canSms = isNorwegianMobileNumber(customerPhone)
+            const channels = [
+              canEmail ? 'e-post' : null,
+              canSms ? 'SMS' : null,
+            ].filter(Boolean)
+            const channelText = channels.length === 2
+              ? 'e-post og SMS'
+              : channels[0] || null
+
+            return (
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="sendNotification"
+                    checked={sendNotification && !!channelText}
+                    onCheckedChange={(checked) => setSendNotification(checked as boolean)}
+                    disabled={!channelText}
+                  />
+                  <Label
+                    htmlFor="sendNotification"
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    {channelText
+                      ? `Send varsel til kunde om endringene (${channelText})`
+                      : 'Send varsel til kunde om endringene'}
+                  </Label>
+                </div>
+                {!channelText && (
+                  <p className="text-xs text-amber-700 pl-6">
+                    Kunden har verken gyldig e-post eller mobilnummer – varsel kan ikke sendes.
+                  </p>
+                )}
+              </div>
+            )
+          })()}
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">

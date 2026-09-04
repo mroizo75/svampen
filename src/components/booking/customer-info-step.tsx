@@ -343,7 +343,7 @@ export function CustomerInfoStep({ customerInfo, onCustomerInfoChange, isAdminBo
             />
             <p className="text-xs text-gray-500">
               {isAdminBooking 
-                ? (customerInfo.phone ? 'Valgfri når telefon er oppgitt' : 'Påkrevd hvis telefon ikke oppgis')
+                ? (customerInfo.phone ? 'Valgfri når telefon er oppgitt. Bekreftelse sendes da på SMS.' : 'Påkrevd hvis telefon ikke oppgis')
                 : 'E-post er påkrevd for å motta bestillingsbekreftelse'}
             </p>
           </div>

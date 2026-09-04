@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendBookingReminderSMS } from '@/lib/sms'
 import { sendBookingReminderEmail } from '@/lib/email'
+import { isRealCustomerEmail } from '@/lib/customer-email'
 
 export async function GET(request: NextRequest) {
   try {
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Send e-post hvis e-postadressen ikke er en intern placeholder
-      const isRealEmail = booking.user.email && !booking.user.email.endsWith('@svampen.local')
+      const isRealEmail = isRealCustomerEmail(booking.user.email)
       if (isRealEmail) {
         const emailResult = await sendBookingReminderEmail({
           customerName,

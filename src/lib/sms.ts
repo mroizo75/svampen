@@ -15,10 +15,20 @@ interface SendSMSResponse {
   error?: string
 }
 
+export function isNorwegianMobileNumber(phone?: string | null): boolean {
+  if (!phone) return false
+  let phoneDigits = phone.replace(/[\s\-()]/g, '')
+  if (phoneDigits.startsWith('+47')) {
+    phoneDigits = phoneDigits.substring(3)
+  } else if (phoneDigits.startsWith('47') && phoneDigits.length === 10) {
+    phoneDigits = phoneDigits.substring(2)
+  }
+  return /^[49]\d{7}$/.test(phoneDigits)
+}
+
 /**
  * Normaliser telefonnummer for SMS-sending
  * Fjerner +47 og andre landskoder
- * Eksempel: +4799112916 → 4799112916
  * Eksempel: +4799112916 → 4799112916
  * Eksempel: 99112916 → 4799112916
  */
@@ -207,6 +217,64 @@ Mvh Svampen`
   return await sendSMS({
     to: customerPhone,
     message: message,
+    sender: 'Svampen',
+  })
+}
+
+export async function sendBookingUpdatedSMS({
+  customerName,
+  customerPhone,
+  oldDateTime,
+  newDateTime,
+}: {
+  customerName: string
+  customerPhone: string
+  oldDateTime: string
+  newDateTime: string
+}) {
+  const message = `Hei ${customerName}!
+Din time hos Svampen er flyttet.
+
+Fra: ${oldDateTime}
+Til: ${newDateTime}
+
+Har du spørsmål? Ring 38 34 74 70
+
+Mvh Svampen`
+
+  return await sendSMS({
+    to: customerPhone,
+    message,
+    sender: 'Svampen',
+  })
+}
+
+export async function sendBookingCancelledSMS({
+  customerName,
+  customerPhone,
+  scheduledDate,
+}: {
+  customerName: string
+  customerPhone: string
+  scheduledDate: string
+}) {
+  const date = new Date(scheduledDate)
+  const formattedDate = date.toLocaleDateString('nb-NO', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+
+  const message = `Hei ${customerName}!
+Din time hos Svampen ${formattedDate} er avbestilt.
+
+Har du spørsmål? Ring 38 34 74 70
+
+Mvh Svampen`
+
+  return await sendSMS({
+    to: customerPhone,
+    message,
     sender: 'Svampen',
   })
 }

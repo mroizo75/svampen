@@ -33,6 +33,8 @@ import { priceWithVat, mvaAmount } from '@/lib/pricing'
 import { CustomerInfoStep } from './customer-info-step'
 import { DateTimeSelector } from './datetime-selector'
 import { BookingSummary } from './booking-summary'
+import { formatCustomerContact, isRealCustomerEmail } from '@/lib/customer-email'
+import { isNorwegianMobileNumber } from '@/lib/sms'
 
 interface Service {
   id: string
@@ -502,7 +504,7 @@ export function MultiBookingWizard({
                 ) : (
                   <>
                     {bookingData.customerInfo.firstName} {bookingData.customerInfo.lastName}
-                    {' '}({bookingData.customerInfo.email})
+                    {' '}({formatCustomerContact(bookingData.customerInfo.email, bookingData.customerInfo.phone)})
                   </>
                 )}
               </div>
@@ -914,23 +916,18 @@ export function MultiBookingWizard({
                             Send SMS-bekreftelse til kunde
                           </label>
                           <p className="text-sm text-blue-700 mt-1">
-                            SMS sendes kun til mobilnummer (starter med 4 eller 9). 
+                            {!isRealCustomerEmail(bookingData.customerInfo.email) && (
+                              <span className="block mb-1">
+                                Kunden har ingen e-post – bekreftelse sendes kun på SMS.
+                              </span>
+                            )}
+                            SMS sendes kun til mobilnummer (starter med 4 eller 9).
                             {bookingData.customerInfo.phone && (
                               <>
                                 {' '}Telefonnummer: <strong>{bookingData.customerInfo.phone}</strong>
-                                {(() => {
-                                  // Samme validering som backend: fjern +47, 47 prefix og spesialtegn
-                                  let phoneDigits = bookingData.customerInfo.phone.replace(/[\s\-()]/g, '')
-                                  if (phoneDigits.startsWith('+47')) {
-                                    phoneDigits = phoneDigits.substring(3)
-                                  } else if (phoneDigits.startsWith('47') && phoneDigits.length === 10) {
-                                    phoneDigits = phoneDigits.substring(2)
-                                  }
-                                  const isMobileNumber = /^[49]\d{7}$/.test(phoneDigits)
-                                  return !isMobileNumber && (
-                                    <span className="text-orange-600"> (ikke et mobilnummer - SMS sendes ikke)</span>
-                                  )
-                                })()}
+                                {!isNorwegianMobileNumber(bookingData.customerInfo.phone) && (
+                                  <span className="text-orange-600"> (ikke et mobilnummer - SMS sendes ikke)</span>
+                                )}
                               </>
                             )}
                           </p>

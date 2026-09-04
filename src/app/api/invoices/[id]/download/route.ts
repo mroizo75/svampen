@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { formatCustomerEmail } from '@/lib/customer-email'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
@@ -112,7 +113,7 @@ export async function GET(
       pdf.setFont('helvetica', 'normal')
       yPos += 6
       
-      pdf.text(invoice.booking.user.email, 20, yPos)
+      pdf.text(formatCustomerEmail(invoice.booking.user.email), 20, yPos)
       yPos += 6
       
       if (invoice.booking.user.phone) {

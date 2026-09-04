@@ -1,6 +1,7 @@
 import { Resend } from 'resend'
 import { generateICalContent } from './calendar-utils'
 import { priceWithVat } from './pricing'
+import { formatCustomerEmail, isRealCustomerEmail } from './customer-email'
 
 // Sjekk om Resend API key er satt
 if (!process.env.RESEND_API_KEY) {
@@ -45,6 +46,11 @@ const escapeHtml = (value: string) =>
 
 export async function sendBookingConfirmationEmail(data: BookingEmailData) {
   try {
+    if (!isRealCustomerEmail(data.customerEmail)) {
+      console.log(`⏭️ Hopper over bekreftelses-e-post: kunden har ingen gyldig e-post`)
+      return { success: true, skipped: true }
+    }
+
     if (!process.env.RESEND_API_KEY) {
       console.error('❌ Kan ikke sende e-post: RESEND_API_KEY mangler')
       return { success: false, error: 'RESEND_API_KEY er ikke konfigurert' }
@@ -300,7 +306,7 @@ export async function sendAdminNotificationEmail(data: BookingEmailData) {
             
             <h2 style="color: #2563eb; margin-top: 20px;">Kunde</h2>
             <p><strong>Navn:</strong> ${data.customerName}</p>
-            <p><strong>E-post:</strong> ${data.customerEmail}</p>
+            <p><strong>E-post:</strong> ${formatCustomerEmail(data.customerEmail)}</p>
             ${data.customerPhone ? `<p><strong>Telefon:</strong> ${data.customerPhone}</p>` : ''}
             ${addressInfo}
             
@@ -380,6 +386,10 @@ interface InvoiceEmailData {
 // Send faktura e-post til kunde
 export async function sendInvoiceEmail(data: InvoiceEmailData) {
   try {
+    if (!isRealCustomerEmail(data.customerEmail)) {
+      return { success: false, error: 'Kunden har ingen gyldig e-postadresse' }
+    }
+
     if (!process.env.RESEND_API_KEY) {
       console.error('❌ Kan ikke sende faktura e-post: RESEND_API_KEY mangler')
       return { success: false, error: 'RESEND_API_KEY er ikke konfigurert' }
@@ -584,6 +594,11 @@ interface BookingReminderEmailData {
 
 export async function sendBookingReminderEmail(data: BookingReminderEmailData) {
   try {
+    if (!isRealCustomerEmail(data.customerEmail)) {
+      console.log(`⏭️ Hopper over påminnelses-e-post: kunden har ingen gyldig e-post`)
+      return { success: true, skipped: true }
+    }
+
     if (!process.env.RESEND_API_KEY) {
       console.error('❌ Kan ikke sende påminnelses-e-post: RESEND_API_KEY mangler')
       return { success: false, error: 'RESEND_API_KEY er ikke konfigurert' }
@@ -686,21 +701,30 @@ interface SendEmailOptions {
 
 export async function sendEmail(options: SendEmailOptions) {
   try {
+    const recipients = (Array.isArray(options.to) ? options.to : [options.to])
+      .filter(isRealCustomerEmail)
+
+    if (recipients.length === 0) {
+      console.log('⏭️ Hopper over e-post: ingen gyldig kundeadresse')
+      return { success: true, skipped: true }
+    }
+
     if (!process.env.RESEND_API_KEY) {
       console.error('❌ Kan ikke sende e-post: RESEND_API_KEY mangler')
       return { success: false, error: 'RESEND_API_KEY er ikke konfigurert' }
     }
 
-    console.log(`📧 Sender e-post til ${options.to}...`)
+    const to = recipients.length === 1 ? recipients[0] : recipients
+    console.log(`📧 Sender e-post til ${to}...`)
     
     const result = await resend.emails.send({
       from: options.from || 'Svampen <noreply@innut.no>',
-      to: options.to,
+      to,
       subject: options.subject,
       html: options.html,
     })
 
-    console.log(`✅ E-post sendt til ${options.to}`)
+    console.log(`✅ E-post sendt til ${to}`)
     return { success: true, data: result }
   } catch (error) {
     console.error('❌ Error sending email:', error)

@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { sendEmail } from '@/lib/email'
+import { sendBookingCancelledSMS, sendBookingUpdatedSMS, isNorwegianMobileNumber } from '@/lib/sms'
+import { isRealCustomerEmail } from '@/lib/customer-email'
 import { BookingStatus, Prisma } from '@prisma/client'
 
 class BookingUpdateError extends Error {
@@ -246,26 +248,37 @@ export async function PATCH(
         },
       })
 
-      // Send varsling hvis forespurt
+      // Send varsling hvis forespurt (e-post og/eller SMS)
       if (sendNotification) {
         const oldDateTime = `${bookingBeforeUpdates.scheduledDate.toLocaleDateString('nb-NO')} kl. ${new Date(bookingBeforeUpdates.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}`
         const newDateTime = `${updatedBooking.scheduledDate.toLocaleDateString('nb-NO')} kl. ${new Date(updatedBooking.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}`
 
-        await sendEmail({
-          to: updatedBooking.user.email,
-          subject: 'Din bestilling har blitt flyttet',
-          html: `
-            <h1>Bestillingen din har blitt flyttet</h1>
-            <p>Hei ${updatedBooking.user.firstName},</p>
-            <p>Din bestilling har blitt flyttet til et nytt tidspunkt:</p>
-            <ul>
-              <li><strong>Gammelt tidspunkt:</strong> ${oldDateTime}</li>
-              <li><strong>Nytt tidspunkt:</strong> ${newDateTime}</li>
-            </ul>
-            <p>Hvis du har spørsmål, ta kontakt med oss.</p>
-            <p>Med vennlig hilsen,<br>Svampen</p>
-          `,
-        })
+        if (isRealCustomerEmail(updatedBooking.user.email)) {
+          await sendEmail({
+            to: updatedBooking.user.email,
+            subject: 'Din bestilling har blitt flyttet',
+            html: `
+              <h1>Bestillingen din har blitt flyttet</h1>
+              <p>Hei ${updatedBooking.user.firstName},</p>
+              <p>Din bestilling har blitt flyttet til et nytt tidspunkt:</p>
+              <ul>
+                <li><strong>Gammelt tidspunkt:</strong> ${oldDateTime}</li>
+                <li><strong>Nytt tidspunkt:</strong> ${newDateTime}</li>
+              </ul>
+              <p>Hvis du har spørsmål, ta kontakt med oss.</p>
+              <p>Med vennlig hilsen,<br>Svampen</p>
+            `,
+          })
+        }
+
+        if (isNorwegianMobileNumber(updatedBooking.user.phone) && updatedBooking.user.phone) {
+          await sendBookingUpdatedSMS({
+            customerName: updatedBooking.user.firstName,
+            customerPhone: updatedBooking.user.phone,
+            oldDateTime,
+            newDateTime,
+          })
+        }
       }
 
       return NextResponse.json({
@@ -297,19 +310,30 @@ export async function PATCH(
         NO_SHOW: 'ikke møtt',
       }
       const statusText = statusTextMap[status] || status
+      const dateTimeText = `${updatedBooking.scheduledDate.toLocaleDateString('nb-NO')} kl. ${new Date(updatedBooking.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}`
 
-      await sendEmail({
-        to: updatedBooking.user.email,
-        subject: 'Statusoppdatering for din bestilling',
-        html: `
-          <h1>Statusoppdatering</h1>
-          <p>Hei ${updatedBooking.user.firstName},</p>
-          <p>Statusen for din bestilling har blitt oppdatert til: <strong>${statusText}</strong></p>
-          <p>Tidspunkt: ${updatedBooking.scheduledDate.toLocaleDateString('nb-NO')} kl. ${new Date(updatedBooking.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}</p>
-          ${customerNotes ? `<p><strong>Merknad:</strong> ${customerNotes}</p>` : ''}
-          <p>Med vennlig hilsen,<br>Svampen</p>
-        `,
-      })
+      if (isRealCustomerEmail(updatedBooking.user.email)) {
+        await sendEmail({
+          to: updatedBooking.user.email,
+          subject: 'Statusoppdatering for din bestilling',
+          html: `
+            <h1>Statusoppdatering</h1>
+            <p>Hei ${updatedBooking.user.firstName},</p>
+            <p>Statusen for din bestilling har blitt oppdatert til: <strong>${statusText}</strong></p>
+            <p>Tidspunkt: ${dateTimeText}</p>
+            ${customerNotes ? `<p><strong>Merknad:</strong> ${customerNotes}</p>` : ''}
+            <p>Med vennlig hilsen,<br>Svampen</p>
+          `,
+        })
+      }
+
+      if (status === 'CANCELLED' && isNorwegianMobileNumber(updatedBooking.user.phone) && updatedBooking.user.phone) {
+        await sendBookingCancelledSMS({
+          customerName: updatedBooking.user.firstName,
+          customerPhone: updatedBooking.user.phone,
+          scheduledDate: updatedBooking.scheduledDate.toISOString(),
+        })
+      }
     }
 
     return NextResponse.json({
@@ -377,18 +401,28 @@ export async function DELETE(
       where: { id },
     })
 
-    // Send varsel til kunde
-    await sendEmail({
-      to: booking.user.email,
-      subject: 'Din bestilling har blitt kansellert',
-      html: `
-        <h1>Bestilling kansellert</h1>
-        <p>Hei ${booking.user.firstName},</p>
-        <p>Din bestilling for ${booking.scheduledDate.toLocaleDateString('nb-NO')} har blitt kansellert.</p>
-        <p>Hvis du har spørsmål, ta kontakt med oss.</p>
-        <p>Med vennlig hilsen,<br>Svampen</p>
-      `,
-    })
+    // Send varsel til kunde (e-post og/eller SMS)
+    if (isRealCustomerEmail(booking.user.email)) {
+      await sendEmail({
+        to: booking.user.email,
+        subject: 'Din bestilling har blitt kansellert',
+        html: `
+          <h1>Bestilling kansellert</h1>
+          <p>Hei ${booking.user.firstName},</p>
+          <p>Din bestilling for ${booking.scheduledDate.toLocaleDateString('nb-NO')} har blitt kansellert.</p>
+          <p>Hvis du har spørsmål, ta kontakt med oss.</p>
+          <p>Med vennlig hilsen,<br>Svampen</p>
+        `,
+      })
+    }
+
+    if (isNorwegianMobileNumber(booking.user.phone) && booking.user.phone) {
+      await sendBookingCancelledSMS({
+        customerName: booking.user.firstName,
+        customerPhone: booking.user.phone,
+        scheduledDate: booking.scheduledDate.toISOString(),
+      })
+    }
 
     return NextResponse.json({
       message: 'Bestilling slettet',

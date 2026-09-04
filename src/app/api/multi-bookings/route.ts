@@ -5,7 +5,8 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { sendBookingConfirmationEmail, sendAdminNotificationEmail } from '@/lib/email'
-import { sendBookingConfirmationSMS } from '@/lib/sms'
+import { isNorwegianMobileNumber, sendBookingConfirmationSMS } from '@/lib/sms'
+import { generatePlaceholderEmail, isRealCustomerEmail, shouldGeneratePlaceholderEmail } from '@/lib/customer-email'
 import { notifyBookingUpdate } from '@/lib/sse-notifications'
 import { isNorwegianHoliday, isWeekend } from '@/lib/norwegian-holidays'
 import { rateLimiter, getClientIp } from '@/lib/rate-limiter'
@@ -94,26 +95,20 @@ export async function POST(request: NextRequest) {
     if (bookingData.isAdminBooking || !session) {
       // Check if user wants to create account
       if (bookingData.customerInfo.createAccount) {
-        // KRITISK: Hvis e-post er placeholder for admin-booking, generer UNIK e-post
         let emailToUse = bookingData.customerInfo.email
-        const isPlaceholderEmail = !emailToUse || emailToUse.trim() === '' || emailToUse === '*' || emailToUse.includes('*')
-        
-        if (isPlaceholderEmail && bookingData.isAdminBooking) {
-          // Generer GARANTERT unik placeholder e-post for admin-booking
-          // Bruk UUID + timestamp for å sikre at hver kunde får sin egen bruker
-          const uniqueId = crypto.randomUUID().split('-')[0] // Første del av UUID
-          const timestamp = Date.now()
-          const nameSlug = `${bookingData.customerInfo.firstName}-${bookingData.customerInfo.lastName}`
-            .toLowerCase()
-            .replace(/[^a-z0-9-]/g, '')
-            .substring(0, 30) // Begrens lengde
-          emailToUse = `noepost.${nameSlug}.${uniqueId}.${timestamp}@svampen.local`
-        } else if (isPlaceholderEmail && !bookingData.isAdminBooking) {
-          // Kunde-booking må ha gyldig e-post
-          return NextResponse.json(
-            { message: 'En gyldig e-postadresse er påkrevd' },
-            { status: 400 }
-          )
+        if (!isRealCustomerEmail(emailToUse)) {
+          if (!bookingData.isAdminBooking) {
+            return NextResponse.json(
+              { message: 'En gyldig e-postadresse er påkrevd' },
+              { status: 400 }
+            )
+          }
+          if (shouldGeneratePlaceholderEmail(emailToUse)) {
+            emailToUse = generatePlaceholderEmail(
+              bookingData.customerInfo.firstName,
+              bookingData.customerInfo.lastName
+            )
+          }
         }
         
         // Check if email already exists
@@ -210,17 +205,19 @@ export async function POST(request: NextRequest) {
         // Guest booking (no account creation) - create temporary user or handle differently
         // KRITISK: Hvis e-post er placeholder (* eller lignende), generer UNIK e-post
         let emailToUse = bookingData.customerInfo.email
-        const isPlaceholderEmail = !emailToUse || emailToUse.trim() === '' || emailToUse === '*' || emailToUse.includes('*')
-        
-        if (isPlaceholderEmail) {
-          // Generer GARANTERT unik placeholder e-post basert på UUID + timestamp
-          const uniqueId = crypto.randomUUID().split('-')[0] // Første del av UUID
-          const timestamp = Date.now()
-          const nameSlug = `${bookingData.customerInfo.firstName}-${bookingData.customerInfo.lastName}`
-            .toLowerCase()
-            .replace(/[^a-z0-9-]/g, '')
-            .substring(0, 30) // Begrens lengde
-          emailToUse = `noepost.${nameSlug}.${uniqueId}.${timestamp}@svampen.local`
+        if (!isRealCustomerEmail(emailToUse)) {
+          if (!bookingData.isAdminBooking) {
+            return NextResponse.json(
+              { message: 'En gyldig e-postadresse er påkrevd' },
+              { status: 400 }
+            )
+          }
+          if (shouldGeneratePlaceholderEmail(emailToUse)) {
+            emailToUse = generatePlaceholderEmail(
+              bookingData.customerInfo.firstName,
+              bookingData.customerInfo.lastName
+            )
+          }
         }
         
         const existingUser = await prisma.user.findUnique({
@@ -320,9 +317,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!bookingData.customerInfo || !bookingData.customerInfo.email || !bookingData.customerInfo.firstName || !bookingData.customerInfo.lastName) {
+    if (!bookingData.customerInfo || !bookingData.customerInfo.firstName || !bookingData.customerInfo.lastName) {
       return NextResponse.json(
         { message: 'Kunde informasjon må være fullstendig utfylt' },
+        { status: 400 }
+      )
+    }
+
+    if (bookingData.isAdminBooking) {
+      if (!isRealCustomerEmail(bookingData.customerInfo.email) && !bookingData.customerInfo.phone?.trim()) {
+        return NextResponse.json(
+          { message: 'Oppgi e-post eller telefonnummer for kunden' },
+          { status: 400 }
+        )
+      }
+    } else if (!isRealCustomerEmail(bookingData.customerInfo.email)) {
+      return NextResponse.json(
+        { message: 'En gyldig e-postadresse er påkrevd' },
         { status: 400 }
       )
     }
@@ -639,31 +650,16 @@ export async function POST(request: NextRequest) {
         ? bookingData.sendSms === true 
         : true // Default true for kunde-bookinger
       
-      if (shouldSendSms && bookingData.customerInfo.phone) {
-        // Fjern alle mellomrom og spesialtegn, behold kun siffer og eventuelt +
-        let phoneDigits = bookingData.customerInfo.phone.replace(/[\s\-()]/g, '')
-        
-        // Fjern +47 eller 47 prefix hvis det finnes
-        if (phoneDigits.startsWith('+47')) {
-          phoneDigits = phoneDigits.substring(3)
-        } else if (phoneDigits.startsWith('47') && phoneDigits.length === 10) {
-          phoneDigits = phoneDigits.substring(2)
-        }
-        
-        // Sjekk om det er et norsk mobilnummer (starter med 4 eller 9, og er 8 siffer)
-        const isMobileNumber = /^[49]\d{7}$/.test(phoneDigits)
-        
-        if (isMobileNumber) {
-          const smsResult = await sendBookingConfirmationSMS({
-            customerName: emailData.customerName,
-            customerPhone: bookingData.customerInfo.phone,
-            scheduledDate: bookingData.scheduledDate,
-            scheduledTime: bookingData.scheduledTime,
-            bookingId: booking.id,
-          })
-          if (!smsResult.success) {
-            console.error('Failed to send confirmation SMS:', smsResult.error)
-          }
+      if (shouldSendSms && isNorwegianMobileNumber(bookingData.customerInfo.phone)) {
+        const smsResult = await sendBookingConfirmationSMS({
+          customerName: emailData.customerName,
+          customerPhone: bookingData.customerInfo.phone,
+          scheduledDate: bookingData.scheduledDate,
+          scheduledTime: bookingData.scheduledTime,
+          bookingId: booking.id,
+        })
+        if (!smsResult.success) {
+          console.error('Failed to send confirmation SMS:', smsResult.error)
         }
       }
     } catch (emailError) {

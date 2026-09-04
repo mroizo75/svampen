@@ -73,10 +73,12 @@ export async function POST(
     const emailResult = await sendInvoiceEmail(emailData)
 
     if (!emailResult.success) {
-      console.error('Failed to resend invoice email:', emailResult.error)
+      const message = typeof emailResult.error === 'string'
+        ? emailResult.error
+        : 'Kunne ikke sende faktura e-post'
       return NextResponse.json(
-        { message: 'Kunne ikke sende faktura e-post', error: emailResult.error },
-        { status: 500 }
+        { message },
+        { status: message.includes('e-post') ? 400 : 500 }
       )
     }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { generatePlaceholderEmail, isRealCustomerEmail } from '@/lib/customer-email'
 
 // PATCH /api/admin/customers/[id] - Oppdater kunde
 export async function PATCH(
@@ -24,21 +25,44 @@ export async function PATCH(
     // Valider input
     const { firstName, lastName, email, phone, address, postalCode, city } = data
 
-    if (!firstName || !lastName || !email) {
+    if (!firstName || !lastName) {
       return NextResponse.json(
-        { message: 'Fornavn, etternavn og e-post er påkrevd' },
+        { message: 'Fornavn og etternavn er påkrevd' },
         { status: 400 }
       )
     }
 
-    // Sjekk om e-posten allerede er i bruk av en annen bruker
-    if (email) {
+    const hasRealEmail = isRealCustomerEmail(email)
+    if (!hasRealEmail && !phone?.trim()) {
+      return NextResponse.json(
+        { message: 'Oppgi e-post eller telefonnummer' },
+        { status: 400 }
+      )
+    }
+
+    const existingCustomer = await prisma.user.findUnique({
+      where: { id },
+      select: { email: true },
+    })
+
+    if (!existingCustomer) {
+      return NextResponse.json(
+        { message: 'Kunde ikke funnet' },
+        { status: 404 }
+      )
+    }
+
+    const emailToUse = hasRealEmail
+      ? email.trim()
+      : (isRealCustomerEmail(existingCustomer.email)
+          ? generatePlaceholderEmail(firstName, lastName)
+          : existingCustomer.email)
+
+    if (hasRealEmail) {
       const existingUser = await prisma.user.findFirst({
         where: {
-          email,
-          NOT: {
-            id,
-          },
+          email: emailToUse,
+          NOT: { id },
         },
       })
 
@@ -50,13 +74,12 @@ export async function PATCH(
       }
     }
 
-    // Oppdater kunden
     const updatedCustomer = await prisma.user.update({
       where: { id },
       data: {
         firstName,
         lastName,
-        email,
+        email: emailToUse,
         phone: phone || null,
         address: address || null,
         postalCode: postalCode || null,

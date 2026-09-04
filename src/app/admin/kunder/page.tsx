@@ -12,6 +12,7 @@ import {
 import { Users, Mail, Phone, Calendar, UserPlus } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
+import { formatCustomerEmail } from '@/lib/customer-email'
 import { AddCustomerDialog } from '@/components/admin/add-customer-dialog'
 import { CustomerSearch } from '@/components/admin/customer-search'
 import { CustomerActionsMenu } from '@/components/admin/customer-actions-menu'
@@ -277,7 +278,7 @@ export default async function AdminCustomersPage({
                           <div className="space-y-1">
                             <div className="flex items-center text-sm">
                               <Mail className="mr-2 h-3 w-3 text-gray-400" />
-                              {customer.email}
+                              {formatCustomerEmail(customer.email)}
                             </div>
                             {customer.phone && (
                               <div className="flex items-center text-sm text-gray-600">

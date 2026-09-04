@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
+import { generatePlaceholderEmail, isRealCustomerEmail } from '@/lib/customer-email'
 
 // GET - Hent alle brukere med paginering
 export async function GET(req: NextRequest) {
@@ -138,10 +139,17 @@ export async function POST(req: NextRequest) {
 
     const { firstName, lastName, email, phone, password, role } = await req.json()
 
-    // Validering
-    if (!firstName || !lastName || !email) {
+    if (!firstName || !lastName) {
       return NextResponse.json(
-        { message: 'Fornavn, etternavn og e-post er påkrevd' },
+        { message: 'Fornavn og etternavn er påkrevd' },
+        { status: 400 }
+      )
+    }
+
+    const hasRealEmail = isRealCustomerEmail(email)
+    if (!hasRealEmail && !phone?.trim()) {
+      return NextResponse.json(
+        { message: 'Oppgi e-post eller telefonnummer' },
         { status: 400 }
       )
     }
@@ -155,18 +163,21 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Email validering
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { message: 'Ugyldig e-postadresse' },
-        { status: 400 }
-      )
+    // Email validering – kun når en ekte adresse er oppgitt
+    const emailToUse = hasRealEmail ? email.trim() : generatePlaceholderEmail(firstName, lastName)
+    if (hasRealEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(emailToUse)) {
+        return NextResponse.json(
+          { message: 'Ugyldig e-postadresse' },
+          { status: 400 }
+        )
+      }
     }
 
     // Sjekk om e-post allerede eksisterer
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email: emailToUse }
     })
 
     if (existingUser) {
@@ -197,7 +208,7 @@ export async function POST(req: NextRequest) {
       data: {
         firstName,
         lastName,
-        email,
+        email: emailToUse,
         phone: phone || null,
         password: hashedPassword,
         role: role || 'USER',

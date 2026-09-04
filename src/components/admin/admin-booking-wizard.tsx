@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import { Loader2, AlertCircle, CheckCircle, Search, X, User, UserPlus } from 'lucide-react'
 import { MultiBookingWizard } from '@/components/booking/multi-booking-wizard'
+import { formatCustomerContact } from '@/lib/customer-email'
 
 interface CustomerResult {
   id: string
@@ -134,8 +135,12 @@ export default function AdminBookingWizard({
   const handleProceed = (e: React.FormEvent) => {
     e.preventDefault()
     const info = getCustomerInfo()
-    if (!info.email || !info.firstName || !info.lastName) {
-      setError('Vennligst fyll ut alle påkrevde felter')
+    if (!info.firstName || !info.lastName) {
+      setError('Fornavn og etternavn er påkrevd')
+      return
+    }
+    if (!info.email.trim() && !info.phone.trim()) {
+      setError('Oppgi e-post eller telefonnummer')
       return
     }
     setError(null)
@@ -150,7 +155,7 @@ export default function AdminBookingWizard({
         <Alert className="bg-blue-50 border-blue-200">
           <CheckCircle className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-900">
-            <strong>Booking for:</strong> {customerInfo.firstName} {customerInfo.lastName} ({customerInfo.email})
+            <strong>Booking for:</strong> {customerInfo.firstName} {customerInfo.lastName} ({formatCustomerContact(customerInfo.email, customerInfo.phone)})
             <Button
               variant="link"
               size="sm"
@@ -229,8 +234,7 @@ export default function AdminBookingWizard({
                               {customer.firstName} {customer.lastName}
                             </div>
                             <div className="text-xs text-gray-500 mt-0.5">
-                              {customer.email}
-                              {customer.phone && ` · ${customer.phone}`}
+                              {formatCustomerContact(customer.email, customer.phone)}
                             </div>
                           </div>
                         </button>
@@ -250,10 +254,7 @@ export default function AdminBookingWizard({
                 <span className="font-medium text-green-900">
                   {selectedCustomer.firstName} {selectedCustomer.lastName}
                 </span>
-                <span className="text-green-700 ml-2">{selectedCustomer.email}</span>
-                {selectedCustomer.phone && (
-                  <span className="text-green-700 ml-2">{selectedCustomer.phone}</span>
-                )}
+                <span className="text-green-700 ml-2">{formatCustomerContact(selectedCustomer.email, selectedCustomer.phone)}</span>
               </div>
               <button
                 type="button"
@@ -311,7 +312,7 @@ export default function AdminBookingWizard({
 
                 <div className="space-y-2">
                   <Label htmlFor="email">
-                    E-post <span className="text-red-500">*</span>
+                    E-post {manualInfo.phone ? '(valgfri)' : <span className="text-red-500">*</span>}
                   </Label>
                   <Input
                     id="email"
@@ -320,10 +321,17 @@ export default function AdminBookingWizard({
                     onChange={(e) => setManualInfo({ ...manualInfo, email: e.target.value })}
                     placeholder="ola@example.com"
                   />
+                  <p className="text-xs text-gray-500">
+                    {manualInfo.phone
+                      ? 'Valgfri når telefon er oppgitt'
+                      : 'Påkrevd hvis telefon ikke oppgis'}
+                  </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Telefon</Label>
+                  <Label htmlFor="phone">
+                    Telefon {manualInfo.email ? '(valgfri)' : <span className="text-red-500">*</span>}
+                  </Label>
                   <Input
                     id="phone"
                     type="tel"
@@ -331,6 +339,11 @@ export default function AdminBookingWizard({
                     onChange={(e) => setManualInfo({ ...manualInfo, phone: e.target.value })}
                     placeholder="+47 XXX XX XXX"
                   />
+                  <p className="text-xs text-gray-500">
+                    {manualInfo.email
+                      ? 'Valgfri når e-post er oppgitt'
+                      : 'Påkrevd hvis e-post ikke oppgis'}
+                  </p>
                 </div>
               </div>
             )}

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
+import { formatCustomerEmail } from '@/lib/customer-email'
 
 async function getInvoices() {
   try {
@@ -196,7 +197,7 @@ export default async function AdminInvoicesPage() {
                             {invoice.booking.user.firstName} {invoice.booking.user.lastName}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {invoice.booking.user.email}
+                            {formatCustomerEmail(invoice.booking.user.email)}
                           </div>
                         </TableCell>
                         <TableCell>
