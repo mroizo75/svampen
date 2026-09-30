@@ -1,5 +1,5 @@
 import { UserRole } from '@prisma/client'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
 import { getServerAuthSession } from '@/lib/auth-utils'
 
@@ -10,14 +10,21 @@ const roleDestinations: Record<UserRole, string> = {
   USER: '/dashboard',
 }
 
-export async function GET(request: NextRequest) {
+function redirectTo(path: string): NextResponse {
+  return new NextResponse(null, {
+    status: 307,
+    headers: {
+      Location: path,
+    },
+  })
+}
+
+export async function GET() {
   const session = await getServerAuthSession()
 
   if (!session?.user?.role) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return redirectTo('/login')
   }
 
-  return NextResponse.redirect(
-    new URL(roleDestinations[session.user.role], request.url)
-  )
+  return redirectTo(roleDestinations[session.user.role])
 }
