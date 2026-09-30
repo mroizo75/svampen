@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import { useSession, signIn } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
@@ -61,7 +62,7 @@ export function CustomerInfoStep({ customerInfo, onCustomerInfoChange, isAdminBo
 
     try {
       const result = await signIn('credentials', {
-        email: loginEmail,
+        email: loginEmail.trim().toLowerCase(),
         password: loginPassword,
         redirect: false,
       })
@@ -237,6 +238,7 @@ export function CustomerInfoStep({ customerInfo, onCustomerInfoChange, isAdminBo
                 <Input
                   id="loginEmail"
                   type="email"
+                  autoComplete="email"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   placeholder="din@email.com"
@@ -248,11 +250,17 @@ export function CustomerInfoStep({ customerInfo, onCustomerInfoChange, isAdminBo
                 <Input
                   id="loginPassword"
                   type="password"
+                  autoComplete="current-password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="Ditt passord"
                   required
                 />
+              </div>
+              <div className="text-right text-sm">
+                <Link href="/forgot-password" className="text-blue-600 hover:underline">
+                  Glemt passord?
+                </Link>
               </div>
               {loginError && (
                 <Alert variant="destructive">

@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn, getSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,7 +16,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -26,7 +24,7 @@ export default function LoginPage() {
 
     try {
       const result = await signIn('credentials', {
-        email,
+        email: email.trim().toLowerCase(),
         password,
         redirect: false,
       })
@@ -42,17 +40,7 @@ export default function LoginPage() {
           setError(result.error || 'Ugyldig e-post eller passord')
         }
       } else {
-        // Hent session for å sjekke rolle
-        const session = await getSession()
-        if (session?.user?.role === 'ADMIN') {
-          router.push('/admin')
-        } else if (session?.user?.role === 'ANSATT') {
-          router.push('/ansatt')
-        } else if (session?.user?.role === 'WORKSHOP') {
-          router.push('/verksted')
-        } else {
-          router.push('/dashboard')
-        }
+        window.location.assign('/auth/redirect')
       }
     } catch (error) {
       console.error('Login error:', error)
@@ -84,6 +72,7 @@ export default function LoginPage() {
                   <Input
                     id="email"
                     type="email"
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="din@epost.no"
@@ -101,6 +90,7 @@ export default function LoginPage() {
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Ditt passord"
@@ -117,6 +107,12 @@ export default function LoginPage() {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+              </div>
+
+              <div className="text-right text-sm">
+                <Link href="/forgot-password" className="text-blue-600 hover:underline">
+                  Glemt passord?
+                </Link>
               </div>
 
               {error && (

@@ -53,8 +53,8 @@ export default function RegisterPage() {
       return
     }
 
-    if (formData.password.length < 6) {
-      setError('Passordet må være minst 6 tegn')
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(formData.password)) {
+      setError('Passordet må ha minst 8 tegn, stor og liten bokstav og ett tall')
       setIsLoading(false)
       return
     }
@@ -164,7 +164,8 @@ export default function RegisterPage() {
                     type="tel"
                     value={formData.phone}
                     onChange={handleChange}
-                    placeholder="+47 XXX XX XXX"
+                    placeholder="12345678"
+                    pattern="[0-9]{8}"
                     className="pl-10"
                     required
                     disabled={isLoading}
@@ -182,7 +183,8 @@ export default function RegisterPage() {
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={handleChange}
-                    placeholder="Minimum 6 tegn"
+                    placeholder="Minst 8 tegn, stor/liten bokstav og tall"
+                    minLength={8}
                     className="pl-10 pr-10"
                     required
                     disabled={isLoading}

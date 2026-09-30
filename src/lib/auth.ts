@@ -23,8 +23,10 @@ export const authOptions: NextAuthOptions = {
           throw new Error('E-post og passord er påkrevd')
         }
 
+        const email = credentials.email.trim().toLowerCase()
+
         // Sjekk rate limit basert på email
-        const emailLimit = rateLimiter.checkEmail(credentials.email)
+        const emailLimit = rateLimiter.checkEmail(email)
         if (!emailLimit.allowed) {
           const minutesLeft = emailLimit.blockedUntil 
             ? Math.ceil((emailLimit.blockedUntil.getTime() - Date.now()) / 60000)
@@ -37,7 +39,7 @@ export const authOptions: NextAuthOptions = {
         try {
           const user = await prisma.user.findUnique({
             where: {
-              email: credentials.email
+              email
             }
           })
 
@@ -56,7 +58,7 @@ export const authOptions: NextAuthOptions = {
           }
 
           // Vellykket innlogging - reset rate limit for denne e-posten
-          rateLimiter.resetEmail(credentials.email)
+          rateLimiter.resetEmail(email)
 
           return {
             id: user.id,

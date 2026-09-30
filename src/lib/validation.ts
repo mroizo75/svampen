@@ -7,6 +7,8 @@ export const passwordSchema = z.string()
 
 // Email validation
 export const emailSchema = z.string()
+  .trim()
+  .toLowerCase()
   .email('Ugyldig e-postadresse')
   .min(1, 'E-post er påkrevd')
 
@@ -24,8 +26,8 @@ export const postalCodeSchema = z.string()
 
 // Registrering schema
 export const registerSchema = z.object({
-  firstName: z.string().min(1, 'Fornavn er påkrevd').max(100),
-  lastName: z.string().min(1, 'Etternavn er påkrevd').max(100),
+  firstName: z.string().trim().min(1, 'Fornavn er påkrevd').max(100),
+  lastName: z.string().trim().min(1, 'Etternavn er påkrevd').max(100),
   email: emailSchema,
   phone: phoneSchema,
   password: passwordSchema,
