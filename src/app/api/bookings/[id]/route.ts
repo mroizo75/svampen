@@ -4,6 +4,14 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notifyBookingUpdate } from '@/lib/sse-notifications'
 import { sendEmail } from '@/lib/email'
+import {
+  calendarDateKey,
+  isSameCalendarDate,
+  isSameWallClockTime,
+  localDateTimeFromKeys,
+  utcMidnightFromDateKey,
+  wallClockTimeKey,
+} from '@/lib/booking-datetime'
 
 export async function GET(
   request: NextRequest,
@@ -164,22 +172,27 @@ export async function PATCH(
         )
       }
 
-      const newDateStr = scheduledDate ?? booking.scheduledDate.toISOString().split('T')[0]
-      const currentTimeStr = new Date(booking.scheduledTime).toTimeString().slice(0, 5)
+      const newDateStr = scheduledDate ?? calendarDateKey(booking.scheduledDate)
+      const currentTimeStr = wallClockTimeKey(new Date(booking.scheduledTime))
       const newTimeStr = scheduledTime ?? currentTimeStr
-      const dateChanged = scheduledDate && scheduledDate !== booking.scheduledDate.toISOString().split('T')[0]
-      const timeChanged = scheduledTime && scheduledTime !== currentTimeStr
+      const dateChanged = Boolean(scheduledDate && !isSameCalendarDate(booking.scheduledDate, scheduledDate))
+      const timeChanged = Boolean(scheduledTime && !isSameWallClockTime(new Date(booking.scheduledTime), scheduledTime))
 
       if (dateChanged || timeChanged) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(newDateStr) || !/^\d{2}:\d{2}$/.test(newTimeStr)) {
+          return NextResponse.json(
+            { message: 'Ugyldig dato eller tid' },
+            { status: 400 }
+          )
+        }
+
         const minAdvanceSetting = await prisma.adminSettings.findUnique({
           where: { key: 'min_advance_booking_hours' },
         })
         const minAdvanceHours = minAdvanceSetting ? parseInt(minAdvanceSetting.value, 10) : 24
         const minimumBookingTime = new Date(now.getTime() + minAdvanceHours * 60 * 60 * 1000)
 
-        const [year, month, day] = newDateStr.split('-').map(Number)
-        const [hours, minutes] = newTimeStr.split(':').map(Number)
-        const scheduledDateTime = new Date(year, month - 1, day, hours, minutes, 0)
+        const scheduledDateTime = localDateTimeFromKeys(newDateStr, newTimeStr)
         const estimatedEnd = new Date(scheduledDateTime.getTime() + booking.totalDuration * 60000)
 
         if (scheduledDateTime < minimumBookingTime) {
@@ -226,7 +239,7 @@ export async function PATCH(
         const updatedBooking = await prisma.booking.update({
           where: { id },
           data: {
-            scheduledDate: new Date(newDateStr),
+            scheduledDate: utcMidnightFromDateKey(newDateStr),
             scheduledTime: scheduledDateTime,
             estimatedEnd,
             customerNotes: customerNotes !== undefined ? customerNotes : booking.customerNotes,

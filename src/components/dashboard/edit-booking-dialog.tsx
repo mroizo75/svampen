@@ -14,11 +14,11 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Calendar } from '@/components/ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Edit, Calendar as CalendarIcon, Clock, Loader2 } from 'lucide-react'
+import { Edit, Clock, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale'
+import { calendarDateKey, ensureSelectedTime, isBeforeToday, wallClockTimeKey } from '@/lib/booking-datetime'
 
 interface EditBookingDialogProps {
   bookingId: string
@@ -42,31 +42,16 @@ export function EditBookingDialog({
   const [checkingAvailability, setCheckingAvailability] = useState(false)
   const [availableTimes, setAvailableTimes] = useState<string[]>([])
 
-  const [selectedDate, setSelectedDate] = useState<Date>(currentDate)
-  const [selectedTime, setSelectedTime] = useState<string>(() => {
-    const time = new Date(currentTime)
-    const hours = time.getHours().toString().padStart(2, '0')
-    const minutes = time.getMinutes().toString().padStart(2, '0')
-    return `${hours}:${minutes}`
-  })
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date(currentDate))
+  const [selectedTime, setSelectedTime] = useState<string>(() => wallClockTimeKey(new Date(currentTime)))
   const [notes, setNotes] = useState(currentNotes || '')
   const [error, setError] = useState<string | null>(null)
   const [availabilityError, setAvailabilityError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!open) return
-    setSelectedDate(currentDate)
-    const time = new Date(currentTime)
-    setSelectedTime(
-      `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`
-    )
-    setNotes(currentNotes || '')
-    setError(null)
-    setAvailabilityError(null)
-    fetchAvailableTimes(currentDate)
-  }, [open, currentDate, currentTime, currentNotes])
+  const currentDateKey = calendarDateKey(new Date(currentDate))
+  const currentTimeKey = wallClockTimeKey(new Date(currentTime))
 
-  const fetchAvailableTimes = async (date: Date) => {
+  const fetchAvailableTimes = async (date: Date, timeToKeep: string) => {
     setCheckingAvailability(true)
     setAvailabilityError(null)
     try {
@@ -82,8 +67,9 @@ export function EditBookingDialog({
         setAvailabilityError(data.message || 'Denne dagen er stengt')
         setAvailableTimes([])
       } else {
-        setAvailableTimes(data.availableTimes || [])
-        if (!data.availableTimes?.length) {
+        const times = ensureSelectedTime(data.availableTimes || [], timeToKeep)
+        setAvailableTimes(times)
+        if (!times.length) {
           setAvailabilityError('Ingen ledige tider denne dagen')
         }
       }
@@ -95,10 +81,21 @@ export function EditBookingDialog({
     }
   }
 
+  useEffect(() => {
+    if (!open) return
+    const date = new Date(`${currentDateKey}T00:00:00`)
+    setSelectedDate(date)
+    setSelectedTime(currentTimeKey)
+    setNotes(currentNotes || '')
+    setError(null)
+    setAvailabilityError(null)
+    void fetchAvailableTimes(date, currentTimeKey)
+  }, [open, currentDateKey, currentTimeKey, currentNotes])
+
   const handleDateChange = (date: Date | undefined) => {
     if (date) {
       setSelectedDate(date)
-      fetchAvailableTimes(date)
+      fetchAvailableTimes(date, selectedTime)
     }
   }
 
@@ -110,7 +107,7 @@ export function EditBookingDialog({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          scheduledDate: format(selectedDate, 'yyyy-MM-dd'),
+          scheduledDate: calendarDateKey(selectedDate),
           scheduledTime: selectedTime,
           customerNotes: notes || undefined,
         }),
@@ -130,10 +127,9 @@ export function EditBookingDialog({
     }
   }
 
-  const currentTimeStr = `${new Date(currentTime).getHours().toString().padStart(2, '0')}:${new Date(currentTime).getMinutes().toString().padStart(2, '0')}`
   const hasChanges =
-    format(selectedDate, 'yyyy-MM-dd') !== format(currentDate, 'yyyy-MM-dd') ||
-    selectedTime !== currentTimeStr ||
+    calendarDateKey(selectedDate) !== currentDateKey ||
+    selectedTime !== currentTimeKey ||
     notes !== (currentNotes || '')
 
   return (
@@ -155,26 +151,19 @@ export function EditBookingDialog({
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label>Dato</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-left font-normal"
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(selectedDate, 'PPPP', { locale: nb })}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDateChange}
-                  locale={nb}
-                  disabled={(date) => date < new Date()}
-                />
-              </PopoverContent>
-            </Popover>
+            <p className="text-sm font-medium">
+              {format(selectedDate, 'PPPP', { locale: nb })}
+            </p>
+            <div className="rounded-md border w-fit">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={handleDateChange}
+                locale={nb}
+                defaultMonth={selectedDate}
+                disabled={isBeforeToday}
+              />
+            </div>
             {availabilityError && (
               <p className="text-sm text-red-600">{availabilityError}</p>
             )}

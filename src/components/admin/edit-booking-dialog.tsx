@@ -8,13 +8,13 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Calendar } from '@/components/ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import { Edit, Calendar as CalendarIcon, Clock, Loader2, Plus, Trash2 } from 'lucide-react'
+import { Edit, Clock, Loader2, Plus, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale'
+import { calendarDateKey, ensureSelectedTime, wallClockTimeKey } from '@/lib/booking-datetime'
 import { isRealCustomerEmail } from '@/lib/customer-email'
 import { isNorwegianMobileNumber } from '@/lib/sms'
 
@@ -83,14 +83,8 @@ export function EditBookingDialog({
   const [checkingAvailability, setCheckingAvailability] = useState(false)
   const [availableTimes, setAvailableTimes] = useState<string[]>([])
   
-  const [selectedDate, setSelectedDate] = useState<Date>(currentDate)
-  const [selectedTime, setSelectedTime] = useState<string>(() => {
-    // Sørg for at vi bruker lokal tid
-    const time = new Date(currentTime)
-    const hours = time.getHours().toString().padStart(2, '0')
-    const minutes = time.getMinutes().toString().padStart(2, '0')
-    return `${hours}:${minutes}`
-  })
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date(currentDate))
+  const [selectedTime, setSelectedTime] = useState<string>(() => wallClockTimeKey(new Date(currentTime)))
   const [status, setStatus] = useState<BookingStatus>(currentStatus)
   const [notes, setNotes] = useState(currentNotes || '')
   const [sendNotification, setSendNotification] = useState(true)
@@ -102,6 +96,20 @@ export function EditBookingDialog({
   const [pendingServices, setPendingServices] = useState<PendingService[]>([])
   const [serviceSelections, setServiceSelections] = useState<Record<string, { serviceId?: string; quantity: number }>>({})
   const [serviceError, setServiceError] = useState<string | null>(null)
+
+  const currentDateKey = calendarDateKey(new Date(currentDate))
+  const currentTimeKey = wallClockTimeKey(new Date(currentTime))
+
+  useEffect(() => {
+    if (!open) return
+    setSelectedDate(new Date(`${currentDateKey}T00:00:00`))
+    setSelectedTime(currentTimeKey)
+    setStatus(currentStatus)
+    setNotes(currentNotes || '')
+    setError(null)
+    setAvailabilityError(null)
+    setAvailableTimes([])
+  }, [open, currentDateKey, currentTimeKey, currentStatus, currentNotes])
 
   useEffect(() => {
     if (!open || availableServices.length > 0) {
@@ -242,7 +250,7 @@ export function EditBookingDialog({
     pendingServices.filter((service) => service.bookingVehicleId === vehicleId)
 
   // Hent tilgjengelige tider når dato endres
-  const fetchAvailableTimes = async (date: Date) => {
+  const fetchAvailableTimes = async (date: Date, timeToKeep: string) => {
     setCheckingAvailability(true)
     setAvailabilityError(null)
     
@@ -262,8 +270,9 @@ export function EditBookingDialog({
         setAvailabilityError(data.message || 'Denne dagen er stengt')
         setAvailableTimes([])
       } else {
-        setAvailableTimes(data.availableTimes || [])
-        if (data.availableTimes.length === 0) {
+        const times = ensureSelectedTime(data.availableTimes || [], timeToKeep)
+        setAvailableTimes(times)
+        if (times.length === 0) {
           setAvailabilityError('Ingen ledige tider denne dagen')
         }
       }
@@ -278,7 +287,7 @@ export function EditBookingDialog({
   const handleDateChange = (date: Date | undefined) => {
     if (date) {
       setSelectedDate(date)
-      fetchAvailableTimes(date)
+      fetchAvailableTimes(date, selectedTime)
     }
   }
 
@@ -299,7 +308,7 @@ export function EditBookingDialog({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          scheduledDate: format(selectedDate, 'yyyy-MM-dd'),
+          scheduledDate: calendarDateKey(selectedDate),
           scheduledTime: selectedTime,
           status,
           customerNotes: notes,
@@ -343,26 +352,18 @@ export function EditBookingDialog({
           {/* Dato */}
           <div className="space-y-2">
             <Label>Dato</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-left font-normal"
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(selectedDate, 'PPPP', { locale: nb })}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDateChange}
-                  locale={nb}
-                  disabled={(date) => date < new Date()}
-                />
-              </PopoverContent>
-            </Popover>
+            <p className="text-sm font-medium">
+              {format(selectedDate, 'PPPP', { locale: nb })}
+            </p>
+            <div className="rounded-md border w-fit">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={handleDateChange}
+                locale={nb}
+                defaultMonth={selectedDate}
+              />
+            </div>
             {availabilityError && (
               <p className="text-sm text-red-600">{availabilityError}</p>
             )}

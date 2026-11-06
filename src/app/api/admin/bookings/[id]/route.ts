@@ -6,6 +6,14 @@ import { sendEmail } from '@/lib/email'
 import { sendBookingCancelledSMS, sendBookingUpdatedSMS, isNorwegianMobileNumber } from '@/lib/sms'
 import { isRealCustomerEmail } from '@/lib/customer-email'
 import { BookingStatus, Prisma } from '@prisma/client'
+import {
+  calendarDateKey,
+  isSameCalendarDate,
+  isSameWallClockTime,
+  localDateTimeFromKeys,
+  utcMidnightFromDateKey,
+  wallClockTimeKey,
+} from '@/lib/booking-datetime'
 
 class BookingUpdateError extends Error {
   status: number
@@ -216,20 +224,20 @@ export async function PATCH(
       booking = refreshedBooking
     }
 
-    // Sjekk om dato/tid endres
-    const dateChanged = scheduledDate && scheduledDate !== bookingBeforeUpdates.scheduledDate.toISOString().split('T')[0]
-    const timeChanged = scheduledTime && scheduledTime !== new Date(bookingBeforeUpdates.scheduledTime).toTimeString().slice(0, 5)
+    // Sammenlign med kalenderdagen og klokkeslettet slik de vises, ikke UTC-datoen.
+    const dateChanged = Boolean(scheduledDate && !isSameCalendarDate(bookingBeforeUpdates.scheduledDate, scheduledDate))
+    const currentTimeKey = wallClockTimeKey(new Date(bookingBeforeUpdates.scheduledTime))
+    const timeChanged = Boolean(scheduledTime && !isSameWallClockTime(new Date(bookingBeforeUpdates.scheduledTime), scheduledTime))
 
     if (dateChanged || timeChanged) {
-      // Valider ny dato/tid
-      const newDate = scheduledDate || bookingBeforeUpdates.scheduledDate.toISOString().split('T')[0]
-      const newTime = scheduledTime || new Date(bookingBeforeUpdates.scheduledTime).toTimeString().slice(0, 5)
-      
-      // Kombiner dato og tid (lokaltid, ikke UTC)
-      // Parse som lokal tid ved å bruke Date constructor med separate verdier
-      const [year, month, day] = newDate.split('-').map(Number)
-      const [hours, minutes] = newTime.split(':').map(Number)
-      const scheduledDateTime = new Date(year, month - 1, day, hours, minutes, 0)
+      const newDate = scheduledDate || calendarDateKey(bookingBeforeUpdates.scheduledDate)
+      const newTime = scheduledTime || currentTimeKey
+
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate) || !/^\d{2}:\d{2}$/.test(newTime)) {
+        throw new BookingUpdateError('Ugyldig dato eller tid', 400)
+      }
+
+      const scheduledDateTime = localDateTimeFromKeys(newDate, newTime)
       const estimatedEnd = new Date(scheduledDateTime.getTime() + booking.totalDuration * 60000)
 
       // Admin har full kontroll – overlappsjekk hoppes over, admin bestemmer selv
@@ -237,7 +245,7 @@ export async function PATCH(
       const updatedBooking = await prisma.booking.update({
         where: { id },
         data: {
-          scheduledDate: new Date(newDate),
+          scheduledDate: utcMidnightFromDateKey(newDate),
           scheduledTime: scheduledDateTime,
           estimatedEnd: estimatedEnd,
           status: status || booking.status,
