@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
+import { formatBookingCustomerName } from '@/lib/cash-customer'
 
 async function getDashboardStats() {
   const today = new Date()
@@ -277,7 +278,7 @@ export default async function AdminDashboard() {
                         <Car className="h-5 w-5 text-blue-600" />
                       </div>
                       <div>
-                        <p className="font-medium">{booking.user.firstName} {booking.user.lastName}</p>
+                        <p className="font-medium">{formatBookingCustomerName(booking.user.firstName, booking.user.lastName)}</p>
                         <p className="text-sm text-gray-600">
                           {vehicleCount} {vehicleCount === 1 ? 'kjøretøy' : 'kjøretøy'} • {serviceCount} {serviceCount === 1 ? 'tjeneste' : 'tjenester'}
                         </p>

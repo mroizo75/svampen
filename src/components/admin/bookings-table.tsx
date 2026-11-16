@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { formatBookingCustomerName } from '@/lib/cash-customer'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -254,7 +255,7 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
                       </div>
                     )}
                     <div className="font-medium text-xs sm:text-sm">
-                      {booking.user.firstName} {booking.user.lastName}
+                      {formatBookingCustomerName(booking.user.firstName, booking.user.lastName)}
                     </div>
                     <div className="text-[10px] sm:text-xs text-gray-500 truncate max-w-[150px]">
                       {formatCustomerEmail(booking.user.email)}

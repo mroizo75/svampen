@@ -19,6 +19,7 @@ import {
   Filter,
 } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
+import { formatBookingCustomerName } from '@/lib/cash-customer'
 import { PaginatedBookingsTable } from '@/components/admin/paginated-bookings-table'
 
 async function getReportData() {
@@ -315,7 +316,7 @@ export default async function AdminReportsPage() {
                         </div>
                         <div>
                           <div className="font-medium">
-                            {booking.user.firstName} {booking.user.lastName}
+                            {formatBookingCustomerName(booking.user.firstName, booking.user.lastName)}
                           </div>
                           <div className="text-sm text-gray-500">
                             {vehicleCount} kjøretøy • {serviceCount} tjenester

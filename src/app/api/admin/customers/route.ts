@@ -5,6 +5,8 @@ import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
 import { generatePlaceholderEmail, isRealCustomerEmail } from '@/lib/customer-email'
+import { searchMatchesCashCustomer } from '@/lib/cash-customer'
+import { ensureCashCustomer } from '@/lib/ensure-cash-customer'
 
 // GET - Hent alle brukere med paginering
 export async function GET(req: NextRequest) {
@@ -36,6 +38,10 @@ export async function GET(req: NextRequest) {
 
     // Fritekst-søk på navn, e-post eller telefon (for booking wizard søk)
     if (searchQuery) {
+      if (searchMatchesCashCustomer(searchQuery)) {
+        await ensureCashCustomer()
+      }
+
       const users = await prisma.user.findMany({
         where: {
           role: { not: 'ADMIN' },

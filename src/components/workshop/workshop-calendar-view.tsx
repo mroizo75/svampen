@@ -14,6 +14,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Car, Clock, User, Building2, Phone, Mail } from 'lucide-react'
+import { formatCustomerEmail } from '@/lib/customer-email'
+import { formatBookingCustomerName } from '@/lib/cash-customer'
 
 moment.locale('nb')
 const localizer = momentLocalizer(moment)
@@ -145,7 +147,7 @@ export default function WorkshopCalendarView({
 
     const customerName = booking.company 
       ? booking.company.name
-      : `${booking.user.firstName} ${booking.user.lastName}`
+      : formatBookingCustomerName(booking.user.firstName, booking.user.lastName)
 
     return {
       title: `${customerName} - ${vehicleInfo[0] || booking.bookingVehicles.length + ' kjøretøy'}`,
@@ -313,7 +315,7 @@ export default function WorkshopCalendarView({
                     )}
                     <p className="flex items-center gap-2">
                       <Mail className="h-4 w-4" />
-                      {selectedEvent.resource.email}
+                      {formatCustomerEmail(selectedEvent.resource.email)}
                     </p>
                   </div>
                 </div>

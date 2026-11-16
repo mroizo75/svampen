@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { sendBookingReminderSMS } from '@/lib/sms'
+import { isNorwegianMobileNumber, sendBookingReminderSMS } from '@/lib/sms'
 import { sendBookingReminderEmail } from '@/lib/email'
 import { isRealCustomerEmail } from '@/lib/customer-email'
+import { formatBookingCustomerName } from '@/lib/cash-customer'
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
     let failed = 0
 
     for (const booking of bookings) {
-      const customerName = `${booking.user.firstName} ${booking.user.lastName}`
+      const customerName = formatBookingCustomerName(booking.user.firstName, booking.user.lastName)
       const scheduledTime = new Date(booking.scheduledTime).toLocaleTimeString('nb-NO', {
         hour: '2-digit',
         minute: '2-digit',
@@ -55,10 +56,11 @@ export async function GET(request: NextRequest) {
       let anySuccess = false
 
       // Send SMS hvis telefonnummer finnes
-      if (booking.user.phone) {
+      const customerPhone = booking.user.phone
+      if (customerPhone && isNorwegianMobileNumber(customerPhone)) {
         const smsResult = await sendBookingReminderSMS({
           customerName,
-          customerPhone: booking.user.phone,
+          customerPhone,
           scheduledDate,
           scheduledTime,
           vehicleTypes,

@@ -10,6 +10,7 @@ import CompleteBookingButton from '@/components/admin/complete-booking-button'
 import InvoiceActions from '@/components/admin/invoice-actions'
 import { EditBookingDialog } from '@/components/admin/edit-booking-dialog'
 import { formatCustomerEmail } from '@/lib/customer-email'
+import { formatBookingCustomerName } from '@/lib/cash-customer'
 
 async function getBooking(id: string) {
   return await prisma.booking.findUnique({
@@ -78,7 +79,7 @@ export default async function BookingDetailsPage({
           <div>
             <h1 className="text-3xl font-bold">Bestilling #{booking.id.substring(0, 8)}</h1>
             <p className="text-gray-600">
-              {booking.user.firstName} {booking.user.lastName} - {new Date(booking.scheduledDate).toLocaleDateString('nb-NO')}
+              {formatBookingCustomerName(booking.user.firstName, booking.user.lastName)} - {new Date(booking.scheduledDate).toLocaleDateString('nb-NO')}
             </p>
           </div>
         </div>
@@ -111,7 +112,7 @@ export default async function BookingDetailsPage({
               )}
               <div>
                 <p className="text-sm text-gray-600">Kunde</p>
-                <p className="font-medium">{booking.user.firstName} {booking.user.lastName}</p>
+                <p className="font-medium">{formatBookingCustomerName(booking.user.firstName, booking.user.lastName)}</p>
                 <p className="text-sm">{formatCustomerEmail(booking.user.email)}</p>
                 {booking.user.phone && <p className="text-sm">{booking.user.phone}</p>}
                 {(booking.user.address || booking.user.postalCode || booking.user.city) && (

@@ -20,6 +20,7 @@ import {
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { formatCustomerEmail } from '@/lib/customer-email'
+import { formatBookingCustomerName } from '@/lib/cash-customer'
 
 async function getInvoices() {
   try {
@@ -194,7 +195,7 @@ export default async function AdminInvoicesPage() {
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">
-                            {invoice.booking.user.firstName} {invoice.booking.user.lastName}
+                            {formatBookingCustomerName(invoice.booking.user.firstName, invoice.booking.user.lastName)}
                           </div>
                           <div className="text-sm text-gray-500">
                             {formatCustomerEmail(invoice.booking.user.email)}

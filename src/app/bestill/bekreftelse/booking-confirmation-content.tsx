@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { AddToCalendar } from '@/components/booking/add-to-calendar'
+import { formatBookingCustomerName } from '@/lib/cash-customer'
 
 export default function BookingConfirmationContent() {
   const searchParams = useSearchParams()
@@ -147,7 +148,7 @@ export default function BookingConfirmationContent() {
                       <div>
                         <p className="text-sm font-medium text-gray-900">Navn</p>
                         <p className="text-sm text-gray-600">
-                          {booking.user.firstName} {booking.user.lastName}
+                          {formatBookingCustomerName(booking.user.firstName, booking.user.lastName)}
                         </p>
                       </div>
                     </div>

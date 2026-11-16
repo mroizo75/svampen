@@ -34,6 +34,7 @@ import { CustomerInfoStep } from './customer-info-step'
 import { DateTimeSelector } from './datetime-selector'
 import { BookingSummary } from './booking-summary'
 import { formatCustomerContact, isRealCustomerEmail } from '@/lib/customer-email'
+import { formatBookingCustomerName, isCashCustomer } from '@/lib/cash-customer'
 import { isNorwegianMobileNumber } from '@/lib/sms'
 
 interface Service {
@@ -159,7 +160,7 @@ export function MultiBookingWizard({
   const [selectedCompany, setSelectedCompany] = useState<any | null>(null)
   const [customerType, setCustomerType] = useState<'private' | 'company'>('private') // Ny state for kundetype
   const [adminOverride, setAdminOverride] = useState(false)
-  const [sendSms, setSendSms] = useState(true) // Default til å sende SMS
+  const [sendSms, setSendSms] = useState(() => !isCashCustomer(prefilledCustomerInfo))
 
   const calculateTotals = useCallback(() => {
     let totalPrice = 0
@@ -503,7 +504,7 @@ export function MultiBookingWizard({
                   </>
                 ) : (
                   <>
-                    {bookingData.customerInfo.firstName} {bookingData.customerInfo.lastName}
+                    {formatBookingCustomerName(bookingData.customerInfo.firstName, bookingData.customerInfo.lastName)}
                     {' '}({formatCustomerContact(bookingData.customerInfo.email, bookingData.customerInfo.phone)})
                   </>
                 )}
@@ -907,7 +908,8 @@ export function MultiBookingWizard({
                         <input
                           type="checkbox"
                           id="sendSms"
-                          checked={sendSms}
+                          checked={sendSms && !isCashCustomer(bookingData.customerInfo)}
+                          disabled={isCashCustomer(bookingData.customerInfo)}
                           onChange={(e) => setSendSms(e.target.checked)}
                           className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
@@ -916,7 +918,12 @@ export function MultiBookingWizard({
                             Send SMS-bekreftelse til kunde
                           </label>
                           <p className="text-sm text-blue-700 mt-1">
-                            {!isRealCustomerEmail(bookingData.customerInfo.email) && (
+                            {isCashCustomer(bookingData.customerInfo) && (
+                              <span className="block mb-1">
+                                Kontantkunde. Det sendes verken e-post eller SMS.
+                              </span>
+                            )}
+                            {!isCashCustomer(bookingData.customerInfo) && !isRealCustomerEmail(bookingData.customerInfo.email) && (
                               <span className="block mb-1">
                                 Kunden har ingen e-post – bekreftelse sendes kun på SMS.
                               </span>

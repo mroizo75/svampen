@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
-import { Loader2, AlertCircle, CheckCircle, Search, X, User, UserPlus } from 'lucide-react'
+import { Loader2, AlertCircle, CheckCircle, Search, X, User, UserPlus, Banknote } from 'lucide-react'
 import { MultiBookingWizard } from '@/components/booking/multi-booking-wizard'
 import { formatCustomerContact } from '@/lib/customer-email'
+import { formatBookingCustomerName } from '@/lib/cash-customer'
 
 interface CustomerResult {
   id: string
@@ -43,6 +44,7 @@ export default function AdminBookingWizard({
   const [showDropdown, setShowDropdown] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerResult | null>(null)
   const [mode, setMode] = useState<'search' | 'new'>('search')
+  const [cashLoading, setCashLoading] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -109,7 +111,7 @@ export default function AdminBookingWizard({
 
   const handleSelectCustomer = (customer: CustomerResult) => {
     setSelectedCustomer(customer)
-    setSearchQuery(`${customer.firstName} ${customer.lastName}`)
+    setSearchQuery(formatBookingCustomerName(customer.firstName, customer.lastName))
     setShowDropdown(false)
   }
 
@@ -130,6 +132,24 @@ export default function AdminBookingWizard({
       }
     }
     return manualInfo
+  }
+
+  const handleCashCustomer = async () => {
+    setError(null)
+    setCashLoading(true)
+    try {
+      const res = await fetch('/api/admin/customers/cash')
+      const data = await res.json()
+      if (!res.ok || !data.customer) {
+        throw new Error(data.message || 'Kunne ikke hente kontantkunden')
+      }
+      setSelectedCustomer(data.customer)
+      setStep('booking')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Kunne ikke hente kontantkunden')
+    } finally {
+      setCashLoading(false)
+    }
   }
 
   const handleProceed = (e: React.FormEvent) => {
@@ -155,7 +175,7 @@ export default function AdminBookingWizard({
         <Alert className="bg-blue-50 border-blue-200">
           <CheckCircle className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-900">
-            <strong>Booking for:</strong> {customerInfo.firstName} {customerInfo.lastName} ({formatCustomerContact(customerInfo.email, customerInfo.phone)})
+            <strong>Booking for:</strong> {formatBookingCustomerName(customerInfo.firstName, customerInfo.lastName)} ({formatCustomerContact(customerInfo.email, customerInfo.phone)})
             <Button
               variant="link"
               size="sm"
@@ -188,6 +208,23 @@ export default function AdminBookingWizard({
             Søk etter eksisterende kunde, eller registrer ny.
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={handleCashCustomer}
+          disabled={cashLoading}
+          className="flex w-full items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-left hover:bg-amber-100 disabled:opacity-60"
+        >
+          <Banknote className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+          <span>
+            <span className="block font-medium text-amber-950">
+              {cashLoading ? 'Henter kontantkunde…' : 'Kontantkunde'}
+            </span>
+            <span className="mt-1 block text-sm text-amber-800">
+              Ingen e-post eller SMS. Timen legges i kalenderen som en vanlig booking, slik at bilpleie kan lese den.
+            </span>
+          </span>
+        </button>
 
         {/* Søk etter eksisterende kunde */}
         <div className="space-y-2" ref={searchRef}>
@@ -231,7 +268,7 @@ export default function AdminBookingWizard({
                           <User className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
                           <div>
                             <div className="font-medium text-sm">
-                              {customer.firstName} {customer.lastName}
+                              {formatBookingCustomerName(customer.firstName, customer.lastName)}
                             </div>
                             <div className="text-xs text-gray-500 mt-0.5">
                               {formatCustomerContact(customer.email, customer.phone)}
@@ -252,7 +289,7 @@ export default function AdminBookingWizard({
               <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />
               <div className="flex-1 text-sm">
                 <span className="font-medium text-green-900">
-                  {selectedCustomer.firstName} {selectedCustomer.lastName}
+                  {formatBookingCustomerName(selectedCustomer.firstName, selectedCustomer.lastName)}
                 </span>
                 <span className="text-green-700 ml-2">{formatCustomerContact(selectedCustomer.email, selectedCustomer.phone)}</span>
               </div>

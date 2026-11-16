@@ -7,6 +7,8 @@ import crypto from 'crypto'
 import { sendBookingConfirmationEmail, sendAdminNotificationEmail } from '@/lib/email'
 import { isNorwegianMobileNumber, sendBookingConfirmationSMS } from '@/lib/sms'
 import { generatePlaceholderEmail, isRealCustomerEmail, shouldGeneratePlaceholderEmail } from '@/lib/customer-email'
+import { CASH_CUSTOMER, formatBookingCustomerName, isCashCustomer } from '@/lib/cash-customer'
+import { ensureCashCustomer } from '@/lib/ensure-cash-customer'
 import { notifyBookingUpdate } from '@/lib/sse-notifications'
 import { isNorwegianHoliday, isWeekend } from '@/lib/norwegian-holidays'
 import { rateLimiter, getClientIp } from '@/lib/rate-limiter'
@@ -89,10 +91,38 @@ export async function POST(request: NextRequest) {
 
     let userId = session?.user?.id
     let user: any = session?.user
+    let cashBooking = false
+
+    if (isCashCustomer(bookingData.customerInfo)) {
+      if (!session?.user || session.user.role !== 'ADMIN') {
+        return NextResponse.json(
+          { message: 'Kun administratorer kan booke kontantkunden' },
+          { status: 403 }
+        )
+      }
+
+      const cashUser = await ensureCashCustomer()
+      bookingData.customerInfo.firstName = CASH_CUSTOMER.firstName
+      bookingData.customerInfo.lastName = CASH_CUSTOMER.lastName
+      bookingData.customerInfo.email = CASH_CUSTOMER.email
+      bookingData.customerInfo.phone = ''
+      bookingData.sendSms = false
+      cashBooking = true
+      userId = cashUser.id
+      user = {
+        id: cashUser.id,
+        email: cashUser.email,
+        name: `${cashUser.firstName} ${cashUser.lastName}`,
+        firstName: cashUser.firstName,
+        lastName: cashUser.lastName,
+        phone: null,
+        role: cashUser.role,
+      }
+    }
 
     // If admin is booking for a customer, handle customer info
     // OR if not logged in, handle guest/new user registration
-    if (bookingData.isAdminBooking || !session) {
+    if (!cashBooking && (bookingData.isAdminBooking || !session)) {
       // Check if user wants to create account
       if (bookingData.customerInfo.createAccount) {
         let emailToUse = bookingData.customerInfo.email
@@ -325,7 +355,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (bookingData.isAdminBooking) {
-      if (!isRealCustomerEmail(bookingData.customerInfo.email) && !bookingData.customerInfo.phone?.trim()) {
+      if (!cashBooking && !isRealCustomerEmail(bookingData.customerInfo.email) && !bookingData.customerInfo.phone?.trim()) {
         return NextResponse.json(
           { message: 'Oppgi e-post eller telefonnummer for kunden' },
           { status: 400 }
@@ -608,7 +638,7 @@ export async function POST(request: NextRequest) {
     // Send e-post bekreftelse til kunde
     try {
       const emailData = {
-        customerName: `${bookingData.customerInfo.firstName} ${bookingData.customerInfo.lastName}`,
+        customerName: formatBookingCustomerName(bookingData.customerInfo.firstName, bookingData.customerInfo.lastName),
         customerEmail: bookingData.customerInfo.email,
         customerPhone: bookingData.customerInfo.phone,
         customerAddress: bookingData.customerInfo.address,

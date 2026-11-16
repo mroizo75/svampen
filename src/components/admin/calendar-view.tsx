@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { useState, useEffect } from 'react'
 import QuickBookingDialog from './quick-booking-dialog'
 import { getNorwegianHolidays } from '@/lib/norwegian-holidays'
+import { formatBookingCustomerName } from '@/lib/cash-customer'
 
 moment.locale('nb')
 const localizer = momentLocalizer(moment)
@@ -151,7 +152,7 @@ export default function CalendarView({
     // Legg til varighet for slutttid
     const end = new Date(start.getTime() + booking.totalDuration * 60000)
     
-    const customerName = `${booking.user.firstName} ${booking.user.lastName}`
+    const customerName = formatBookingCustomerName(booking.user.firstName, booking.user.lastName)
     const vehicleCount = booking.bookingVehicles.length
     
     return {

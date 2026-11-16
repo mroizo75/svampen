@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { formatBookingCustomerName } from '@/lib/cash-customer'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { 
@@ -119,7 +120,7 @@ export function PaginatedBookingsTable({ bookings }: PaginatedBookingsTableProps
                     </div>
                   </TableCell>
                   <TableCell>
-                    {booking.user.firstName} {booking.user.lastName}
+                    {formatBookingCustomerName(booking.user.firstName, booking.user.lastName)}
                   </TableCell>
                   <TableCell>
                     {serviceCount} {serviceCount === 1 ? 'tjeneste' : 'tjenester'}
