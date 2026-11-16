@@ -124,7 +124,9 @@ export function MultiBookingWizard({
 }: MultiBookingWizardProps) {
   const router = useRouter()
   const { data: session } = useSession()
-  const [currentStep, setCurrentStep] = useState(isAdminBooking ? 0 : 1) // Start på steg 0 for admin
+  const cashCustomer = isAdminBooking && isCashCustomer(prefilledCustomerInfo)
+  const firstStep = isAdminBooking && !cashCustomer ? 0 : 1
+  const [currentStep, setCurrentStep] = useState(firstStep)
   const [bookingData, setBookingData] = useState<BookingData>({
     vehicles: [],
     customerInfo: {
@@ -439,7 +441,7 @@ export function MultiBookingWizard({
 
   const steps = isAdminBooking 
     ? [
-        { number: 0, title: 'Velg kunde', icon: Users },
+        ...(cashCustomer ? [] : [{ number: 0, title: 'Velg kunde', icon: Users }]),
         { number: 1, title: 'Kjøretøy & Tjenester', icon: Car },
         { number: 2, title: 'Dato & Tid', icon: Calendar },
         { number: 3, title: 'Bekreftelse', icon: CheckCircle },
@@ -485,7 +487,7 @@ export function MultiBookingWizard({
       </div>
 
       {/* Quick Booking Customer Info Banner - vises når man har hoppet over steg 0 */}
-      {isAdminBooking && currentStep > 0 && (
+      {isAdminBooking && !cashCustomer && currentStep > 0 && (
         <Alert className="mb-6 bg-blue-50 border-blue-200">
           <CheckCircle className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-900">
@@ -600,7 +602,7 @@ export function MultiBookingWizard({
           )}
 
           {/* Step 0: Customer Type Selection (Admin Only) */}
-          {isAdminBooking && currentStep === 0 && (
+          {isAdminBooking && !cashCustomer && currentStep === 0 && (
             <div className="space-y-6">
               <Alert className="bg-blue-50 border-blue-200">
                 <Info className="h-4 w-4 text-blue-600" />
@@ -1012,7 +1014,7 @@ export function MultiBookingWizard({
         <Button
           variant="outline"
           onClick={() => setCurrentStep(currentStep - 1)}
-          disabled={currentStep === (isAdminBooking ? 0 : 1)}
+          disabled={currentStep === firstStep}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Forrige

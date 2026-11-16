@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { Loader2, AlertCircle, CheckCircle, Search, X, User, UserPlus, Banknote } from 'lucide-react'
 import { MultiBookingWizard } from '@/components/booking/multi-booking-wizard'
 import { formatCustomerContact } from '@/lib/customer-email'
-import { formatBookingCustomerName } from '@/lib/cash-customer'
+import { formatBookingCustomerName, isCashCustomer } from '@/lib/cash-customer'
 
 interface CustomerResult {
   id: string
@@ -155,6 +155,16 @@ export default function AdminBookingWizard({
   const handleProceed = (e: React.FormEvent) => {
     e.preventDefault()
     const info = getCustomerInfo()
+    if (
+      !selectedCustomer
+      && info.firstName.trim().toLowerCase() === 'kontantkunde'
+      && !info.lastName.trim()
+      && !info.email.trim()
+      && !info.phone.trim()
+    ) {
+      void handleCashCustomer()
+      return
+    }
     if (!info.firstName || !info.lastName) {
       setError('Fornavn og etternavn er påkrevd')
       return
@@ -175,7 +185,8 @@ export default function AdminBookingWizard({
         <Alert className="bg-blue-50 border-blue-200">
           <CheckCircle className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-900">
-            <strong>Booking for:</strong> {formatBookingCustomerName(customerInfo.firstName, customerInfo.lastName)} ({formatCustomerContact(customerInfo.email, customerInfo.phone)})
+            <strong>Booking for:</strong> {formatBookingCustomerName(customerInfo.firstName, customerInfo.lastName)}
+            {!isCashCustomer(customerInfo) && ` (${formatCustomerContact(customerInfo.email, customerInfo.phone)})`}
             <Button
               variant="link"
               size="sm"
