@@ -37,6 +37,40 @@ export function ensureSelectedTime(times: string[], selectedTime: string): strin
   return [...times, selectedTime].sort()
 }
 
+export function isBookingOnCalendarDay(scheduledDate: Date, year: number, monthIndex: number, day: number): boolean {
+  const utcMatch = scheduledDate.getUTCFullYear() === year
+    && scheduledDate.getUTCMonth() === monthIndex
+    && scheduledDate.getUTCDate() === day
+  const localMatch = scheduledDate.getFullYear() === year
+    && scheduledDate.getMonth() === monthIndex
+    && scheduledDate.getDate() === day
+
+  if (localMatch && !utcMatch) return true
+  if (utcMatch && !localMatch) {
+    return scheduledDate.getUTCHours() === 0 && scheduledDate.getUTCMinutes() === 0
+  }
+  return utcMatch && localMatch
+}
+
+export function calendarDayQueryRange(year: number, monthIndex: number, day: number): { gte: Date; lte: Date } {
+  return {
+    gte: new Date(Date.UTC(year, monthIndex, day, 0, 0, 0, 0) - 14 * 60 * 60 * 1000),
+    lte: new Date(Date.UTC(year, monthIndex, day, 23, 59, 59, 999)),
+  }
+}
+
+export function slotOverlapsBooking(input: {
+  scheduledTime: Date
+  totalDuration: number
+  slotStartMinutes: number
+  slotDurationMinutes: number
+}): boolean {
+  const bookingStart = input.scheduledTime.getUTCHours() * 60 + input.scheduledTime.getUTCMinutes()
+  const bookingEnd = bookingStart + input.totalDuration
+  const slotEnd = input.slotStartMinutes + input.slotDurationMinutes
+  return input.slotStartMinutes < bookingEnd && slotEnd > bookingStart
+}
+
 export function isBeforeToday(date: Date): boolean {
   const startOfToday = new Date()
   startOfToday.setHours(0, 0, 0, 0)

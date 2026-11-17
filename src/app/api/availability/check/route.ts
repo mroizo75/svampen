@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { calendarDayQueryRange, isBookingOnCalendarDay } from '@/lib/booking-datetime'
 
 // GET /api/availability/check?date=2025-10-23
 // Returnerer max tilgjengelig tid for en gitt dato
@@ -49,22 +50,23 @@ export async function GET(req: NextRequest) {
     const checkDate = new Date(year, month - 1, day, 0, 0, 0, 0)
 
     // Hent eksisterende bookinger for denne datoen
-    const existingBookings = await prisma.booking.findMany({
+    const existingBookings = (await prisma.booking.findMany({
       where: {
-        scheduledDate: checkDate,
+        scheduledDate: calendarDayQueryRange(year, month - 1, day),
         status: {
           notIn: ['CANCELLED', 'NO_SHOW'],
         },
       },
       select: {
         id: true,
+        scheduledDate: true,
         scheduledTime: true,
         totalDuration: true,
       },
       orderBy: {
         scheduledTime: 'asc',
       },
-    })
+    })).filter((booking) => isBookingOnCalendarDay(booking.scheduledDate, year, month - 1, day))
 
     // Arbeidstid fra settings
     const workStart = startHour * 60 + startMinute // Start i minutter
@@ -91,7 +93,7 @@ export async function GET(req: NextRequest) {
     // Konverter bookinger til tidsintervaller
     const bookedSlots = existingBookings.map(booking => {
       const scheduledTime = new Date(booking.scheduledTime)
-      const startMinutes = scheduledTime.getHours() * 60 + scheduledTime.getMinutes()
+      const startMinutes = scheduledTime.getUTCHours() * 60 + scheduledTime.getUTCMinutes()
       const endMinutes = startMinutes + booking.totalDuration
 
       return {

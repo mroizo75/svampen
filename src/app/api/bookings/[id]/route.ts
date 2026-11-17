@@ -8,7 +8,10 @@ import {
   calendarDateKey,
   isSameCalendarDate,
   isSameWallClockTime,
+  calendarDayQueryRange,
+  isBookingOnCalendarDay,
   localDateTimeFromKeys,
+  slotOverlapsBooking,
   utcMidnightFromDateKey,
   wallClockTimeKey,
 } from '@/lib/booking-datetime'
@@ -202,32 +205,26 @@ export async function PATCH(
           )
         }
 
-        const overlappingBookings = await prisma.booking.findMany({
+        const [slotYear, slotMonth, slotDay] = newDateStr.split('-').map(Number)
+        const [slotHours, slotMinutes] = newTimeStr.split(':').map(Number)
+        const overlappingBookings = (await prisma.booking.findMany({
           where: {
             id: { not: id },
             status: { notIn: ['CANCELLED', 'COMPLETED'] },
-            OR: [
-              {
-                AND: [
-                  { scheduledTime: { lte: scheduledDateTime } },
-                  { estimatedEnd: { gt: scheduledDateTime } },
-                ],
-              },
-              {
-                AND: [
-                  { scheduledTime: { lt: estimatedEnd } },
-                  { estimatedEnd: { gte: estimatedEnd } },
-                ],
-              },
-              {
-                AND: [
-                  { scheduledTime: { gte: scheduledDateTime } },
-                  { estimatedEnd: { lte: estimatedEnd } },
-                ],
-              },
-            ],
+            scheduledDate: calendarDayQueryRange(slotYear, slotMonth - 1, slotDay),
           },
-        })
+          select: {
+            scheduledDate: true,
+            scheduledTime: true,
+            totalDuration: true,
+          },
+        })).filter((existing) => isBookingOnCalendarDay(existing.scheduledDate, slotYear, slotMonth - 1, slotDay)
+          && slotOverlapsBooking({
+            scheduledTime: existing.scheduledTime,
+            totalDuration: existing.totalDuration,
+            slotStartMinutes: slotHours * 60 + slotMinutes,
+            slotDurationMinutes: booking.totalDuration,
+          }))
 
         if (overlappingBookings.length > 0) {
           return NextResponse.json(

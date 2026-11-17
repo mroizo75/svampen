@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { BookingStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { isNorwegianHoliday, isWeekend } from '@/lib/norwegian-holidays'
+import { calendarDayQueryRange, isBookingOnCalendarDay, slotOverlapsBooking } from '@/lib/booking-datetime'
 
 export async function GET(request: NextRequest) {
   // Hent åpningstider og minimum forhåndsbestilling fra admin settings
@@ -94,29 +95,23 @@ export async function GET(request: NextRequest) {
     const now = new Date()
     const minimumBookingTime = new Date(now.getTime() + (minAdvanceHours * 60 * 60 * 1000))
 
-    // Hent eksisterende bestillinger for datoen (alle aktive bookinger)
-    const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
-    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
-    
     const existingBookingsWhere = {
-      scheduledDate: {
-        gte: startOfDay,
-        lte: endOfDay,
-      },
+      scheduledDate: calendarDayQueryRange(year, month - 1, day),
       status: {
         in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] satisfies BookingStatus[],
       },
       ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
     }
-    const existingBookings = await prisma.booking.findMany({
+    const existingBookings = (await prisma.booking.findMany({
       where: existingBookingsWhere,
       select: {
         id: true,
+        scheduledDate: true,
         scheduledTime: true,
         estimatedEnd: true,
         totalDuration: true,
       },
-    })
+    })).filter((booking) => isBookingOnCalendarDay(booking.scheduledDate, year, month - 1, day))
 
     // Hent tilgjengelige tidsslots for datoen
     const timeSlots = await prisma.timeSlot.findMany({
@@ -171,12 +166,12 @@ export async function GET(request: NextRequest) {
     const isTimeSlotAvailable = (proposedStart: Date, proposedEnd: Date): boolean => {
       if (overlapsClosedWindow(proposedStart, proposedEnd)) return false
 
-      const hasConflict = existingBookings.some(booking => {
-        const bookingStart = new Date(booking.scheduledTime)
-        const bookingEnd = new Date(booking.estimatedEnd)
-        const overlaps = proposedStart < bookingEnd && proposedEnd > bookingStart
-        return overlaps
-      })
+      const hasConflict = existingBookings.some((booking) => slotOverlapsBooking({
+        scheduledTime: booking.scheduledTime,
+        totalDuration: booking.totalDuration,
+        slotStartMinutes: proposedStart.getHours() * 60 + proposedStart.getMinutes(),
+        slotDurationMinutes: duration,
+      }))
       
       return !hasConflict
     }

@@ -11,6 +11,7 @@ import { CASH_CUSTOMER, formatBookingCustomerName, isCashCustomer } from '@/lib/
 import { ensureCashCustomer } from '@/lib/ensure-cash-customer'
 import { notifyBookingUpdate } from '@/lib/sse-notifications'
 import { isNorwegianHoliday, isWeekend } from '@/lib/norwegian-holidays'
+import { calendarDayQueryRange, isBookingOnCalendarDay, slotOverlapsBooking } from '@/lib/booking-datetime'
 import { rateLimiter, getClientIp } from '@/lib/rate-limiter'
 
 interface BookingVehicleData {
@@ -492,24 +493,19 @@ export async function POST(request: NextRequest) {
 
     // Sjekk om tiden er tilgjengelig (kun hvis IKKE admin override)
     if (!bookingData.isAdminBooking || !bookingData.adminOverride) {
-      // Hent alle bookinger for samme dag (UTC for konsistens)
-      const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
-      const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999))
-      
-      const existingBookings = await prisma.booking.findMany({
+      const existingBookings = (await prisma.booking.findMany({
         where: {
-          scheduledDate: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
+          scheduledDate: calendarDayQueryRange(year, month - 1, day),
           status: {
             in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'],
           },
         },
         select: {
           id: true,
+          scheduledDate: true,
           scheduledTime: true,
           estimatedEnd: true,
+          totalDuration: true,
           userId: true,
           user: {
             select: {
@@ -518,7 +514,7 @@ export async function POST(request: NextRequest) {
             }
           }
         },
-      })
+      })).filter((booking) => isBookingOnCalendarDay(booking.scheduledDate, year, month - 1, day))
       
       // KRITISK: Sjekk for duplikat booking (samme bruker, samme tid)
       // Dette forhindrer at én person booker flere ganger på samme tidspunkt
@@ -559,18 +555,13 @@ export async function POST(request: NextRequest) {
       
       
       // Sjekk for overlapp
-      const conflictingBooking = existingBookings.find(booking => {
-        const bookingStart = new Date(booking.scheduledTime)
-        const bookingEnd = new Date(booking.estimatedEnd)
-        
-        // Overlapp hvis: (bookingTime < bookingEnd) OG (estimatedEnd > bookingStart)
-        const overlaps = bookingTime < bookingEnd && estimatedEnd > bookingStart
-        
-        if (overlaps) {
-        }
-        
-        return overlaps
-      })
+      const [slotHours, slotMinutes] = [hours, minutes]
+      const conflictingBooking = existingBookings.find((booking) => slotOverlapsBooking({
+        scheduledTime: booking.scheduledTime,
+        totalDuration: booking.totalDuration,
+        slotStartMinutes: slotHours * 60 + slotMinutes,
+        slotDurationMinutes: bookingData.totalDuration,
+      }))
 
       if (conflictingBooking) {
         return NextResponse.json(
