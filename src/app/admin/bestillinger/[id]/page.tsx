@@ -11,6 +11,7 @@ import InvoiceActions from '@/components/admin/invoice-actions'
 import { EditBookingDialog } from '@/components/admin/edit-booking-dialog'
 import { formatCustomerEmail } from '@/lib/customer-email'
 import { formatBookingCustomerName } from '@/lib/cash-customer'
+import { formatOsloDate, formatOsloDateTime } from '@/lib/booking-datetime'
 
 async function getBooking(id: string) {
   return await prisma.booking.findUnique({
@@ -79,7 +80,7 @@ export default async function BookingDetailsPage({
           <div>
             <h1 className="text-3xl font-bold">Bestilling #{booking.id.substring(0, 8)}</h1>
             <p className="text-gray-600">
-              {formatBookingCustomerName(booking.user.firstName, booking.user.lastName)} - {new Date(booking.scheduledDate).toLocaleDateString('nb-NO')}
+              {formatBookingCustomerName(booking.user.firstName, booking.user.lastName)} - {formatOsloDate(new Date(booking.scheduledDate))}
             </p>
           </div>
         </div>
@@ -127,7 +128,7 @@ export default async function BookingDetailsPage({
               <div>
                 <p className="text-sm text-gray-600">Dato & Tid</p>
                 <p className="font-medium">
-                  {new Date(booking.scheduledDate).toLocaleDateString('nb-NO')} kl. {new Date(booking.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
+                  {formatOsloDateTime(new Date(booking.scheduledDate), new Date(booking.scheduledTime))}
                 </p>
                 <p className="text-sm">Varighet: {Math.floor(booking.totalDuration / 60)}t {booking.totalDuration % 60}min</p>
               </div>

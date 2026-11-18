@@ -10,6 +10,7 @@ import {
   calendarDateKey,
   isSameCalendarDate,
   isSameWallClockTime,
+  formatOsloDateTime,
   localDateTimeFromKeys,
   utcMidnightFromDateKey,
   wallClockTimeKey,
@@ -258,8 +259,8 @@ export async function PATCH(
 
       // Send varsling hvis forespurt (e-post og/eller SMS)
       if (sendNotification) {
-        const oldDateTime = `${bookingBeforeUpdates.scheduledDate.toLocaleDateString('nb-NO')} kl. ${new Date(bookingBeforeUpdates.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}`
-        const newDateTime = `${updatedBooking.scheduledDate.toLocaleDateString('nb-NO')} kl. ${new Date(updatedBooking.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}`
+        const oldDateTime = formatOsloDateTime(bookingBeforeUpdates.scheduledDate, bookingBeforeUpdates.scheduledTime)
+        const newDateTime = formatOsloDateTime(updatedBooking.scheduledDate, updatedBooking.scheduledTime)
 
         if (isRealCustomerEmail(updatedBooking.user.email)) {
           await sendEmail({
@@ -318,7 +319,7 @@ export async function PATCH(
         NO_SHOW: 'ikke møtt',
       }
       const statusText = statusTextMap[status] || status
-      const dateTimeText = `${updatedBooking.scheduledDate.toLocaleDateString('nb-NO')} kl. ${new Date(updatedBooking.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}`
+      const dateTimeText = formatOsloDateTime(updatedBooking.scheduledDate, updatedBooking.scheduledTime)
 
       if (isRealCustomerEmail(updatedBooking.user.email)) {
         await sendEmail({

@@ -2,6 +2,7 @@ import { Resend } from 'resend'
 import { generateICalContent } from './calendar-utils'
 import { priceWithVat } from './pricing'
 import { formatCustomerEmail, isRealCustomerEmail } from './customer-email'
+import { formatOsloLongDate, osloDateTimeFromKeys, osloTimeKey } from './booking-datetime'
 
 // Sjekk om Resend API key er satt
 if (!process.env.RESEND_API_KEY) {
@@ -58,12 +59,11 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
 
     console.log(`📧 Sender booking bekreftelse til ${data.customerEmail}...`)
     
-    const formattedDate = new Date(data.scheduledDate).toLocaleDateString('nb-NO', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
+    const dateKey = data.scheduledDate.slice(0, 10)
+    const timeKey = data.scheduledTime.slice(0, 5)
+    const startsAt = osloDateTimeFromKeys(dateKey, timeKey)
+    const formattedDate = formatOsloLongDate(startsAt)
+    const formattedTime = osloTimeKey(startsAt)
 
     const hours = Math.floor(data.totalDuration / 60)
     const minutes = data.totalDuration % 60
@@ -121,7 +121,7 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
                   </tr>
                   <tr>
                     <td style="padding: 8px 0; color: #6b7280;">Tid:</td>
-                    <td style="padding: 8px 0; color: #1f2937; font-weight: 600;">${data.scheduledTime}</td>
+                    <td style="padding: 8px 0; color: #1f2937; font-weight: 600;">${formattedTime}</td>
                   </tr>
                   <tr>
                     <td style="padding: 8px 0; color: #6b7280;">Varighet:</td>
@@ -207,7 +207,7 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
     `
 
     // Generate iCal attachment
-    const scheduledDateTime = new Date(`${data.scheduledDate}T${data.scheduledTime}`)
+    const scheduledDateTime = startsAt
     const endDateTime = new Date(scheduledDateTime.getTime() + data.totalDuration * 60000)
     
     const vehiclesForCalendar = data.vehicles
@@ -257,12 +257,11 @@ export async function sendAdminNotificationEmail(data: BookingEmailData) {
 
     console.log('📧 Sender admin notifikasjon...')
     
-    const formattedDate = new Date(data.scheduledDate).toLocaleDateString('nb-NO', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
+    const dateKey = data.scheduledDate.slice(0, 10)
+    const timeKey = data.scheduledTime.slice(0, 5)
+    const startsAt = osloDateTimeFromKeys(dateKey, timeKey)
+    const formattedDate = formatOsloLongDate(startsAt)
+    const formattedTime = osloTimeKey(startsAt)
 
     const hours = Math.floor(data.totalDuration / 60)
     const minutes = data.totalDuration % 60
@@ -313,7 +312,7 @@ export async function sendAdminNotificationEmail(data: BookingEmailData) {
             <h2 style="color: #2563eb; margin-top: 20px;">Bestillingsdetaljer</h2>
             <p><strong>ID:</strong> ${data.bookingId}</p>
             <p><strong>Dato:</strong> ${formattedDate}</p>
-            <p><strong>Tid:</strong> ${data.scheduledTime}</p>
+            <p><strong>Tid:</strong> ${formattedTime}</p>
             <p><strong>Varighet:</strong> ${durationText}</p>
             
             <h2 style="color: #2563eb; margin-top: 20px;">Kjøretøy og tjenester</h2>
@@ -604,12 +603,11 @@ export async function sendBookingReminderEmail(data: BookingReminderEmailData) {
       return { success: false, error: 'RESEND_API_KEY er ikke konfigurert' }
     }
 
-    const formattedDate = new Date(data.scheduledDate).toLocaleDateString('nb-NO', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
+    const dateKey = data.scheduledDate.slice(0, 10)
+    const timeKey = data.scheduledTime.slice(0, 5)
+    const startsAt = osloDateTimeFromKeys(dateKey, timeKey)
+    const formattedDate = formatOsloLongDate(startsAt)
+    const formattedTime = osloTimeKey(startsAt)
 
     const vehicleList = data.vehicleTypes.map(v => `<li>${escapeHtml(v)}</li>`).join('')
 
@@ -645,7 +643,7 @@ export async function sendBookingReminderEmail(data: BookingReminderEmailData) {
                   </tr>
                   <tr>
                     <td style="padding: 8px 0; color: #6b7280;">Tid:</td>
-                    <td style="padding: 8px 0; color: #1f2937; font-weight: 600;">kl. ${escapeHtml(data.scheduledTime)}</td>
+                    <td style="padding: 8px 0; color: #1f2937; font-weight: 600;">kl. ${escapeHtml(formattedTime)}</td>
                   </tr>
                   <tr>
                     <td style="padding: 8px 0; color: #6b7280; vertical-align: top;">Kjøretøy:</td>
@@ -679,7 +677,7 @@ export async function sendBookingReminderEmail(data: BookingReminderEmailData) {
     const result = await resend.emails.send({
       from: 'Svampen Booking <booking@innut.no>',
       to: data.customerEmail,
-      subject: `Påminnelse: Time hos Svampen i morgen – ${formattedDate} kl. ${data.scheduledTime}`,
+      subject: `Påminnelse: Time hos Svampen i morgen – ${formattedDate} kl. ${formattedTime}`,
       html: emailHtml,
     })
 

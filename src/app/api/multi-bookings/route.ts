@@ -11,7 +11,7 @@ import { CASH_CUSTOMER, formatBookingCustomerName, isCashCustomer } from '@/lib/
 import { ensureCashCustomer } from '@/lib/ensure-cash-customer'
 import { notifyBookingUpdate } from '@/lib/sse-notifications'
 import { isNorwegianHoliday, isWeekend } from '@/lib/norwegian-holidays'
-import { calendarDayQueryRange, isBookingOnCalendarDay, slotOverlapsBooking } from '@/lib/booking-datetime'
+import { calendarDayQueryRange, isBookingOnCalendarDay, osloDateTimeFromKeys, slotOverlapsBooking } from '@/lib/booking-datetime'
 import { rateLimiter, getClientIp } from '@/lib/rate-limiter'
 
 interface BookingVehicleData {
@@ -419,9 +419,9 @@ export async function POST(request: NextRequest) {
     }
     
     const [hours, minutes] = timeParts
-    // Lagre tiden som UTC, men behandle input-verdien som lokal tid
-    // Dette sikrer at 07:00 Oslo lagres som 07:00 i databasen (ikke 06:00)
-    const bookingTime = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0))
+    const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    const timeKey = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+    const bookingTime = osloDateTimeFromKeys(dateKey, timeKey)
 
     if (isNaN(bookingTime.getTime())) {
       return NextResponse.json(
@@ -478,8 +478,9 @@ export async function POST(request: NextRequest) {
         // Delvis stengt — sjekk om bookingtiden overlapper stengevinduet
         const [csH, csM] = closedDate.startTime.split(':').map(Number)
         const [ceH, ceM] = closedDate.endTime.split(':').map(Number)
-        const windowStart = new Date(Date.UTC(year, month - 1, day, csH, csM, 0, 0))
-        const windowEnd = new Date(Date.UTC(year, month - 1, day, ceH, ceM, 0, 0))
+        const closedDateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+        const windowStart = osloDateTimeFromKeys(closedDateKey, closedDate.startTime)
+        const windowEnd = osloDateTimeFromKeys(closedDateKey, closedDate.endTime)
         const overlaps = bookingTime < windowEnd && estimatedEnd > windowStart
 
         if (overlaps) {

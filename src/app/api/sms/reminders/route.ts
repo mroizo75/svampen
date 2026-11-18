@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendBookingReminderSMS } from '@/lib/sms'
+import { osloTimeKey } from '@/lib/booking-datetime'
 
 export async function GET(req: NextRequest) {
   try {
@@ -76,10 +77,7 @@ export async function GET(req: NextRequest) {
       const vehicleTypes = booking.bookingVehicles.map(bv => bv.vehicleType.name)
 
       // Format scheduled time
-      const scheduledTime = new Date(booking.scheduledTime).toLocaleTimeString('nb-NO', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
+      const scheduledTime = osloTimeKey(new Date(booking.scheduledTime))
 
       // Send SMS reminder
       const smsResult = await sendBookingReminderSMS({

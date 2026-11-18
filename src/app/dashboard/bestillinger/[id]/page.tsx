@@ -22,6 +22,7 @@ import {
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale'
+import { osloTimeKey } from '@/lib/booking-datetime'
 import CancelBookingButton from '@/components/dashboard/cancel-booking-button'
 import { EditBookingDialog } from '@/components/dashboard/edit-booking-dialog'
 
@@ -174,21 +175,11 @@ export default function BookingDetailsPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Start tid:</span>
-                <span className="font-medium">{(() => {
-                  const time = new Date(booking.scheduledTime)
-                  const hours = String(time.getUTCHours()).padStart(2, '0')
-                  const minutes = String(time.getUTCMinutes()).padStart(2, '0')
-                  return `${hours}:${minutes}`
-                })()}</span>
+                <span className="font-medium">{osloTimeKey(new Date(booking.scheduledTime))}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Estimert ferdig:</span>
-                <span className="font-medium">{(() => {
-                  const time = new Date(booking.estimatedEnd)
-                  const hours = String(time.getUTCHours()).padStart(2, '0')
-                  const minutes = String(time.getUTCMinutes()).padStart(2, '0')
-                  return `${hours}:${minutes}`
-                })()}</span>
+                <span className="font-medium">{osloTimeKey(new Date(booking.estimatedEnd))}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Varighet:</span>

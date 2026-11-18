@@ -37,9 +37,10 @@ export default function QuickBookingDialog({
     }
     
     if (selectedTime) {
-      const timeStr = selectedTime.toLocaleTimeString('nb-NO', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      const timeStr = selectedTime.toLocaleTimeString('nb-NO', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Europe/Oslo',
       })
       sessionStorage.setItem('quickBookingTime', timeStr)
     }
@@ -61,7 +62,7 @@ export default function QuickBookingDialog({
 
   const formatTime = (time: Date | null) => {
     if (!time) return 'Ikke valgt'
-    return time.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })
+    return time.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Oslo' })
   }
 
   return (

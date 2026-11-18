@@ -156,12 +156,12 @@ export async function sendBookingReminderSMS({
   scheduledTime: string
   vehicleTypes: string[]
 }) {
-  const date = new Date(scheduledDate)
-  const formattedDate = date.toLocaleDateString('nb-NO', {
+  const formattedDate = new Intl.DateTimeFormat('nb-NO', {
+    timeZone: 'Europe/Oslo',
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-  })
+  }).format(new Date(`${scheduledDate.slice(0, 10)}T12:00:00Z`))
 
   const vehicleList = vehicleTypes.join(', ')
 
@@ -197,12 +197,12 @@ export async function sendBookingConfirmationSMS({
   scheduledTime: string
   bookingId: string
 }) {
-  const date = new Date(scheduledDate)
-  const formattedDate = date.toLocaleDateString('nb-NO', {
+  const formattedDate = new Intl.DateTimeFormat('nb-NO', {
+    timeZone: 'Europe/Oslo',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-  })
+  }).format(new Date(`${scheduledDate.slice(0, 10)}T12:00:00Z`))
 
   const message = `Hei ${customerName}! 
 Din booking hos Svampen er bekreftet!
@@ -258,12 +258,12 @@ export async function sendBookingCancelledSMS({
   customerPhone: string
   scheduledDate: string
 }) {
-  const date = new Date(scheduledDate)
-  const formattedDate = date.toLocaleDateString('nb-NO', {
+  const formattedDate = new Intl.DateTimeFormat('nb-NO', {
+    timeZone: 'Europe/Oslo',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-  })
+  }).format(new Date(`${scheduledDate.slice(0, 10)}T12:00:00Z`))
 
   const message = `Hei ${customerName}!
 Din time hos Svampen ${formattedDate} er avbestilt.

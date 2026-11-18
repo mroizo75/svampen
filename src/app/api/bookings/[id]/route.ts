@@ -10,6 +10,7 @@ import {
   isSameWallClockTime,
   calendarDayQueryRange,
   isBookingOnCalendarDay,
+  formatOsloDateTime,
   localDateTimeFromKeys,
   slotOverlapsBooking,
   utcMidnightFromDateKey,
@@ -264,8 +265,8 @@ export async function PATCH(
           }
         })
 
-        const oldDateTime = `${booking.scheduledDate.toLocaleDateString('nb-NO')} kl. ${new Date(booking.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}`
-        const newDateTime = `${updatedBooking.scheduledDate.toLocaleDateString('nb-NO')} kl. ${new Date(updatedBooking.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}`
+        const oldDateTime = formatOsloDateTime(booking.scheduledDate, booking.scheduledTime)
+        const newDateTime = formatOsloDateTime(updatedBooking.scheduledDate, updatedBooking.scheduledTime)
 
         await sendEmail({
           to: updatedBooking.user.email,

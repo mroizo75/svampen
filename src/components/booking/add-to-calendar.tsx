@@ -42,17 +42,7 @@ export function AddToCalendar({ booking, bookingId }: AddToCalendarProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   // Prepare event data
-  const scheduledDate = new Date(booking.scheduledDate)
-  const scheduledTime = new Date(booking.scheduledTime)
-  
-  const startTime = new Date(
-    scheduledDate.getFullYear(),
-    scheduledDate.getMonth(),
-    scheduledDate.getDate(),
-    scheduledTime.getHours(),
-    scheduledTime.getMinutes()
-  )
-  
+  const startTime = new Date(booking.scheduledTime)
   const endTime = new Date(startTime.getTime() + booking.totalDuration * 60000)
 
   // Generate title and description

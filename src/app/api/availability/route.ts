@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { BookingStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { isNorwegianHoliday, isWeekend } from '@/lib/norwegian-holidays'
-import { calendarDayQueryRange, isBookingOnCalendarDay, slotOverlapsBooking } from '@/lib/booking-datetime'
+import { calendarDayQueryRange, isBookingOnCalendarDay, osloDateTimeFromKeys, osloParts, slotOverlapsBooking } from '@/lib/booking-datetime'
 
 export async function GET(request: NextRequest) {
   // Hent åpningstider og minimum forhåndsbestilling fra admin settings
@@ -155,10 +155,9 @@ export async function GET(request: NextRequest) {
     // Hjelpefunksjon: sjekk om tidsrom overlapper med delvis stengevindu (startTime/endTime)
     const overlapsClosedWindow = (proposedStart: Date, proposedEnd: Date): boolean => {
       if (!closedDate?.startTime || !closedDate?.endTime) return false
-      const [csH, csM] = closedDate.startTime.split(':').map(Number)
-      const [ceH, ceM] = closedDate.endTime.split(':').map(Number)
-      const windowStart = new Date(year, month - 1, day, csH, csM, 0, 0)
-      const windowEnd = new Date(year, month - 1, day, ceH, ceM, 0, 0)
+      const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      const windowStart = osloDateTimeFromKeys(dateKey, closedDate.startTime)
+      const windowEnd = osloDateTimeFromKeys(dateKey, closedDate.endTime)
       return proposedStart < windowEnd && proposedEnd > windowStart
     }
 
@@ -169,7 +168,7 @@ export async function GET(request: NextRequest) {
       const hasConflict = existingBookings.some((booking) => slotOverlapsBooking({
         scheduledTime: booking.scheduledTime,
         totalDuration: booking.totalDuration,
-        slotStartMinutes: proposedStart.getHours() * 60 + proposedStart.getMinutes(),
+        slotStartMinutes: osloParts(proposedStart).hour * 60 + osloParts(proposedStart).minute,
         slotDurationMinutes: duration,
       }))
       
@@ -182,16 +181,12 @@ export async function GET(request: NextRequest) {
       for (let hour = defaultStartHour; hour < 16; hour++) { // Hard-cap på kl. 16:00 start
         for (let minute = 0; minute < 60; minute += 30) {
           const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-          
-          // Opprett datetime for denne timen (bruk lokal tid for å unngå tidssone problemer)
-          const proposedStart = new Date(year, month - 1, day, hour, minute, 0, 0)
-          
-          // Beregn sluttid basert på varighet
+          const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+          const proposedStart = osloDateTimeFromKeys(dateKey, timeString)
           const proposedEnd = new Date(proposedStart.getTime() + duration * 60000)
-          
-          // Sjekk at sluttiden er innenfor utvidet arbeidstid (kan gå til 18:00 for lange tjenester)
-          const endHour = proposedEnd.getHours()
-          const endMinute = proposedEnd.getMinutes()
+          const endParts = osloParts(proposedEnd)
+          const endHour = endParts.hour
+          const endMinute = endParts.minute
           if (endHour > defaultEndHour || (endHour === defaultEndHour && endMinute > 0)) {
             continue
           }
@@ -211,8 +206,10 @@ export async function GET(request: NextRequest) {
     } else {
       // Bruk definerte tidsslots
       timeSlots.forEach(slot => {
-        const startTime = new Date(slot.startTime)
-        const timeString = `${startTime.getHours().toString().padStart(2, '0')}:${startTime.getMinutes().toString().padStart(2, '0')}`
+        const slotParts = osloParts(new Date(slot.startTime))
+        const timeString = `${String(slotParts.hour).padStart(2, '0')}:${String(slotParts.minute).padStart(2, '0')}`
+        const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+        const startTime = osloDateTimeFromKeys(dateKey, timeString)
         
         // Sjekk minimum forhåndsbestilling
         if (startTime < minimumBookingTime) {

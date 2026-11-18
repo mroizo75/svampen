@@ -14,6 +14,7 @@ import {
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { formatBookingCustomerName } from '@/lib/cash-customer'
+import { formatOsloDateTime } from '@/lib/booking-datetime'
 
 async function getDashboardStats() {
   const today = new Date()
@@ -283,7 +284,7 @@ export default async function AdminDashboard() {
                           {vehicleCount} {vehicleCount === 1 ? 'kjøretøy' : 'kjøretøy'} • {serviceCount} {serviceCount === 1 ? 'tjeneste' : 'tjenester'}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {new Date(booking.scheduledDate).toLocaleDateString('nb-NO')} kl. {new Date(booking.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
+                          {formatOsloDateTime(new Date(booking.scheduledDate), new Date(booking.scheduledTime))}
                         </p>
                       </div>
                     </div>

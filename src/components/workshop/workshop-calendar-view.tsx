@@ -16,6 +16,7 @@ import {
 import { Car, Clock, User, Building2, Phone, Mail } from 'lucide-react'
 import { formatCustomerEmail } from '@/lib/customer-email'
 import { formatBookingCustomerName } from '@/lib/cash-customer'
+import { osloWallClockDate } from '@/lib/booking-datetime'
 
 moment.locale('nb')
 const localizer = momentLocalizer(moment)
@@ -122,18 +123,7 @@ export default function WorkshopCalendarView({
 
   // Konverter bookinger til kalender-events
   const events: CalendarEvent[] = bookings.map(booking => {
-    // scheduledTime inneholder allerede både dato og tid fra databasen
-    // MySQL lagrer som UTC, så vi må lese UTC-verdiene og behandle dem som lokal tid
-    const scheduledTime = new Date(booking.scheduledTime)
-    
-    // Hent UTC-verdier og bruk dem som lokale verdier (fordi de ble lagret som lokal tid)
-    const startTime = new Date(
-      scheduledTime.getUTCFullYear(),
-      scheduledTime.getUTCMonth(),
-      scheduledTime.getUTCDate(),
-      scheduledTime.getUTCHours(),
-      scheduledTime.getUTCMinutes()
-    )
+    const startTime = osloWallClockDate(new Date(booking.scheduledTime))
     
     const endTime = new Date(startTime.getTime() + booking.totalDuration * 60000)
 

@@ -4,6 +4,7 @@ import { isNorwegianMobileNumber, sendBookingReminderSMS } from '@/lib/sms'
 import { sendBookingReminderEmail } from '@/lib/email'
 import { isRealCustomerEmail } from '@/lib/customer-email'
 import { formatBookingCustomerName } from '@/lib/cash-customer'
+import { osloDateKey, osloTimeKey } from '@/lib/booking-datetime'
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,12 +47,9 @@ export async function GET(request: NextRequest) {
 
     for (const booking of bookings) {
       const customerName = formatBookingCustomerName(booking.user.firstName, booking.user.lastName)
-      const scheduledTime = new Date(booking.scheduledTime).toLocaleTimeString('nb-NO', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
+      const scheduledTime = osloTimeKey(new Date(booking.scheduledTime))
       const vehicleTypes = booking.bookingVehicles.map(bv => bv.vehicleType.name)
-      const scheduledDate = booking.scheduledDate.toISOString()
+      const scheduledDate = osloDateKey(new Date(booking.scheduledDate))
 
       let anySuccess = false
 

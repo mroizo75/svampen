@@ -13,6 +13,7 @@ import Link from 'next/link'
 import { getServerAuthSession } from '@/lib/auth-utils'
 import { prisma } from '@/lib/prisma'
 import { priceWithVat } from '@/lib/pricing'
+import { formatOsloDateTime } from '@/lib/booking-datetime'
 
 async function getUserBookings(userId: string) {
   try {
@@ -280,7 +281,7 @@ export default async function DashboardPage() {
                         </p>
                         <p className="text-sm text-gray-600">{vehicleNames}</p>
                         <p className="text-sm text-gray-500">
-                          {new Date(booking.scheduledDate).toLocaleDateString('nb-NO')} kl. {new Date(booking.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
+                          {formatOsloDateTime(new Date(booking.scheduledDate), new Date(booking.scheduledTime))}
                         </p>
                       </div>
                     </div>

@@ -20,6 +20,7 @@ import {
 import Link from 'next/link'
 import { AddToCalendar } from '@/components/booking/add-to-calendar'
 import { formatBookingCustomerName } from '@/lib/cash-customer'
+import { formatOsloLongDate, osloTimeKey } from '@/lib/booking-datetime'
 
 export default function BookingConfirmationContent() {
   const searchParams = useSearchParams()
@@ -116,12 +117,7 @@ export default function BookingConfirmationContent() {
                     <div>
                       <p className="text-sm font-medium text-gray-900">Dato</p>
                       <p className="text-sm text-gray-600">
-                        {new Date(booking.scheduledDate).toLocaleDateString('nb-NO', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
+                        {formatOsloLongDate(new Date(booking.scheduledDate))}
                       </p>
                     </div>
                   </div>
@@ -130,10 +126,7 @@ export default function BookingConfirmationContent() {
                     <div>
                       <p className="text-sm font-medium text-gray-900">Tidspunkt</p>
                       <p className="text-sm text-gray-600">
-                        {new Date(booking.scheduledTime).toLocaleTimeString('nb-NO', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        {osloTimeKey(new Date(booking.scheduledTime))}
                       </p>
                     </div>
                   </div>

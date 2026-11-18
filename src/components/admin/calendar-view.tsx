@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react'
 import QuickBookingDialog from './quick-booking-dialog'
 import { getNorwegianHolidays } from '@/lib/norwegian-holidays'
 import { formatBookingCustomerName } from '@/lib/cash-customer'
+import { osloWallClockDate } from '@/lib/booking-datetime'
 
 moment.locale('nb')
 const localizer = momentLocalizer(moment)
@@ -136,18 +137,7 @@ export default function CalendarView({
 
   // Konverter bookinger til kalender-events
   const bookingEvents: CalendarEvent[] = bookings.map(booking => {
-    // scheduledTime inneholder allerede både dato og tid fra databasen
-    // MySQL lagrer som UTC, så vi må lese UTC-verdiene og behandle dem som lokal tid
-    const scheduledTime = new Date(booking.scheduledTime)
-    
-    // Hent UTC-verdier og bruk dem som lokale verdier (fordi de ble lagret som lokal tid)
-    const start = new Date(
-      scheduledTime.getUTCFullYear(),
-      scheduledTime.getUTCMonth(),
-      scheduledTime.getUTCDate(),
-      scheduledTime.getUTCHours(),
-      scheduledTime.getUTCMinutes()
-    )
+    const start = osloWallClockDate(new Date(booking.scheduledTime))
     
     // Legg til varighet for slutttid
     const end = new Date(start.getTime() + booking.totalDuration * 60000)

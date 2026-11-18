@@ -11,6 +11,7 @@ import { format } from 'date-fns'
 import { nb } from 'date-fns/locale'
 import CancelBookingButton from '@/components/dashboard/cancel-booking-button'
 import { priceWithVat } from '@/lib/pricing'
+import { osloTimeKey } from '@/lib/booking-datetime'
 
 interface Booking {
   id: string
@@ -126,12 +127,7 @@ export default function BookingsPage() {
                     </CardTitle>
                     <CardDescription className="flex items-center gap-2 mt-2">
                       <Clock className="h-4 w-4" />
-                      Kl. {(() => {
-                        const time = new Date(booking.scheduledTime)
-                        const hours = String(time.getUTCHours()).padStart(2, '0')
-                        const minutes = String(time.getUTCMinutes()).padStart(2, '0')
-                        return `${hours}:${minutes}`
-                      })()} ({Math.floor(booking.totalDuration / 60)}t {booking.totalDuration % 60}min)
+                      Kl. {osloTimeKey(new Date(booking.scheduledTime))} ({Math.floor(booking.totalDuration / 60)}t {booking.totalDuration % 60}min)
                     </CardDescription>
                   </div>
                   {getStatusBadge(booking.status)}

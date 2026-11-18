@@ -7,6 +7,8 @@ import {
   isSameCalendarDate,
   isSameWallClockTime,
   localDateTimeFromKeys,
+  osloDateTimeFromKeys,
+  osloTimeKey,
   slotOverlapsBooking,
   utcMidnightFromDateKey,
   wallClockTimeKey,
@@ -21,14 +23,18 @@ describe('booking datetime', () => {
     assert.equal(isSameCalendarDate(stored, '2026-11-21'), false)
   })
 
-  it('stores a picked date at UTC midnight and a picked time in local wall clock', () => {
+  it('stores a picked date at UTC midnight and a picked time as Norwegian wall clock', () => {
     const date = utcMidnightFromDateKey('2026-11-21')
-    const time = localDateTimeFromKeys('2026-11-21', '09:30')
+    const winter = localDateTimeFromKeys('2026-11-21', '09:30')
+    const summer = osloDateTimeFromKeys('2026-07-21', '12:30')
 
     assert.equal(date.toISOString(), '2026-11-21T00:00:00.000Z')
-    assert.equal(wallClockTimeKey(time), '09:30')
-    assert.equal(isSameWallClockTime(time, '09:30'), true)
-    assert.equal(isSameWallClockTime(time, '10:00'), false)
+    assert.equal(winter.toISOString(), '2026-11-21T08:30:00.000Z')
+    assert.equal(summer.toISOString(), '2026-07-21T10:30:00.000Z')
+    assert.equal(wallClockTimeKey(winter), '09:30')
+    assert.equal(osloTimeKey(summer), '12:30')
+    assert.equal(isSameWallClockTime(winter, '09:30'), true)
+    assert.equal(isSameWallClockTime(winter, '10:00'), false)
   })
 
   it('keeps a booking on the calendar day whether the date was stored at UTC or local midnight', () => {
@@ -41,30 +47,20 @@ describe('booking datetime', () => {
     assert.equal(isBookingOnCalendarDay(nextLocalMidnight, 2026, 10, 20), false)
   })
 
-  it('blocks the same wall-clock time even when the stored instant is one hour off local time', () => {
-    const storedAtUtcWallClock = new Date(Date.UTC(2026, 10, 20, 9, 0, 0, 0))
-    const proposedShifted = new Date(Date.UTC(2026, 10, 20, 8, 0, 0, 0))
-    const oldComparisonOverlaps = proposedShifted < new Date(storedAtUtcWallClock.getTime() + 60 * 60000)
-      && new Date(proposedShifted.getTime() + 60 * 60000) > storedAtUtcWallClock
+  it('blocks the same Norwegian wall-clock time', () => {
+    const stored = osloDateTimeFromKeys('2026-11-20', '12:30')
 
-    assert.equal(oldComparisonOverlaps, false)
     assert.equal(slotOverlapsBooking({
-      scheduledTime: storedAtUtcWallClock,
+      scheduledTime: stored,
       totalDuration: 60,
-      slotStartMinutes: 9 * 60,
+      slotStartMinutes: 12 * 60 + 30,
       slotDurationMinutes: 60,
     }), true)
     assert.equal(slotOverlapsBooking({
-      scheduledTime: storedAtUtcWallClock,
+      scheduledTime: stored,
       totalDuration: 60,
-      slotStartMinutes: 10 * 60,
+      slotStartMinutes: 13 * 60 + 30,
       slotDurationMinutes: 60,
     }), false)
-    assert.equal(slotOverlapsBooking({
-      scheduledTime: new Date('1970-01-01T09:00:00.000Z'),
-      totalDuration: 60,
-      slotStartMinutes: 9 * 60,
-      slotDurationMinutes: 30,
-    }), true)
   })
 })

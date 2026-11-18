@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { calendarDayQueryRange, isBookingOnCalendarDay } from '@/lib/booking-datetime'
+import { calendarDayQueryRange, isBookingOnCalendarDay, osloParts } from '@/lib/booking-datetime'
 
 // GET /api/availability/check?date=2025-10-23
 // Returnerer max tilgjengelig tid for en gitt dato
@@ -92,12 +92,12 @@ export async function GET(req: NextRequest) {
 
     // Konverter bookinger til tidsintervaller
     const bookedSlots = existingBookings.map(booking => {
-      const scheduledTime = new Date(booking.scheduledTime)
-      const startMinutes = scheduledTime.getUTCHours() * 60 + scheduledTime.getUTCMinutes()
+      const parts = osloParts(new Date(booking.scheduledTime))
+      const startMinutes = parts.hour * 60 + parts.minute
       const endMinutes = startMinutes + booking.totalDuration
 
       return {
-        start: `${String(scheduledTime.getHours()).padStart(2, '0')}:${String(scheduledTime.getMinutes()).padStart(2, '0')}`,
+        start: `${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}`,
         end: `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`,
         startMinutes,
         endMinutes,

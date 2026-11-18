@@ -1,3 +1,5 @@
+import { OSLO_TIME_ZONE, osloParts } from './booking-datetime'
+
 // Utility functions for generating calendar links
 
 interface CalendarEvent {
@@ -26,8 +28,17 @@ export function generateGoogleCalendarUrl(event: CalendarEvent): string {
 }
 
 // Generate iCal file content (for Apple Calendar, Outlook, etc.)
+function formatOsloIcal(date: Date): string {
+  const parts = osloParts(date)
+  const month = String(parts.month).padStart(2, '0')
+  const day = String(parts.day).padStart(2, '0')
+  const hour = String(parts.hour).padStart(2, '0')
+  const minute = String(parts.minute).padStart(2, '0')
+  return `${parts.year}${month}${day}T${hour}${minute}00`
+}
+
 export function generateICalContent(event: CalendarEvent): string {
-  const formatDate = (date: Date) => {
+  const formatStamp = (date: Date) => {
     return date.toISOString().replace(/-|:|\.\d{3}/g, '')
   }
 
@@ -37,10 +48,27 @@ export function generateICalContent(event: CalendarEvent): string {
     'PRODID:-//Svampen//Booking System//NO',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
+    'BEGIN:VTIMEZONE',
+    `TZID:${OSLO_TIME_ZONE}`,
+    'BEGIN:DAYLIGHT',
+    'TZOFFSETFROM:+0100',
+    'TZOFFSETTO:+0200',
+    'TZNAME:CEST',
+    'DTSTART:19700329T020000',
+    'RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU',
+    'END:DAYLIGHT',
+    'BEGIN:STANDARD',
+    'TZOFFSETFROM:+0200',
+    'TZOFFSETTO:+0100',
+    'TZNAME:CET',
+    'DTSTART:19701025T030000',
+    'RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU',
+    'END:STANDARD',
+    'END:VTIMEZONE',
     'BEGIN:VEVENT',
-    `DTSTART:${formatDate(event.startTime)}`,
-    `DTEND:${formatDate(event.endTime)}`,
-    `DTSTAMP:${formatDate(new Date())}`,
+    `DTSTART;TZID=${OSLO_TIME_ZONE}:${formatOsloIcal(event.startTime)}`,
+    `DTEND;TZID=${OSLO_TIME_ZONE}:${formatOsloIcal(event.endTime)}`,
+    `DTSTAMP:${formatStamp(new Date())}`,
     `SUMMARY:${event.title}`,
     `DESCRIPTION:${event.description.replace(/\n/g, '\\n')}`,
     `LOCATION:${event.location}`,

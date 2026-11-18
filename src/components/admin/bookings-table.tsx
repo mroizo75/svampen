@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { formatBookingCustomerName } from '@/lib/cash-customer'
+import { formatOsloDate, osloTimeKey } from '@/lib/booking-datetime'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -278,10 +279,10 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
                 </TableCell>
                 <TableCell className="py-2">
                   <div className="font-medium text-xs sm:text-sm">
-                    {new Date(booking.scheduledDate).toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                    {formatOsloDate(new Date(booking.scheduledDate))}
                   </div>
                   <div className="text-[10px] sm:text-xs text-gray-500">
-                    {new Date(booking.scheduledTime).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
+                    {osloTimeKey(new Date(booking.scheduledTime))}
                   </div>
                 </TableCell>
                 <TableCell className="py-2">
